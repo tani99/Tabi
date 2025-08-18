@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import ScreenLayout from '../components/layout/ScreenLayout';
 import ScreenHeader from '../components/layout/ScreenHeader';
 import CustomButton from '../components/CustomButton';
+import FirestoreTest from '../components/FirestoreTest';
 import { logout } from '../services/auth';
 import { useAuth } from '../context/AuthContext';
 import { colors } from '../theme/colors';
@@ -56,6 +57,9 @@ const HomeScreen = ({ navigation }) => {
           Create itineraries, discover destinations, and organize your travel plans all in one place.
         </Text>
       </View>
+
+      {/* Firestore Test Component */}
+      <FirestoreTest />
 
       {/* Action Buttons */}
       <View style={styles.actionContainer}>
