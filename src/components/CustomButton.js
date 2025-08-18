@@ -69,6 +69,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.button.secondary.border,
   },
+  outline: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: colors.button.secondary.border,
+  },
   disabled: {
     backgroundColor: colors.button.disabled.background,
     borderColor: colors.button.disabled.border,
@@ -82,6 +87,9 @@ const styles = StyleSheet.create({
     color: colors.button.primary.text,
   },
   secondaryText: {
+    color: colors.button.secondary.text,
+  },
+  outlineText: {
     color: colors.button.secondary.text,
   },
   disabledText: {

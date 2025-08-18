@@ -65,7 +65,7 @@ const HomeScreen = ({ navigation }) => {
       <View style={styles.actionContainer}>
         <CustomButton
           title="Create New Trip"
-          onPress={() => console.log('Create new trip')}
+          onPress={() => navigation.navigate('CreateTrip')}
           style={styles.actionButton}
         />
         <CustomButton

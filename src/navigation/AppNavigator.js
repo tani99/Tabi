@@ -10,6 +10,7 @@ import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 import HomeScreen from '../screens/HomeScreen';
+import CreateTripScreen from '../screens/CreateTripScreen';
 
 const Stack = createStackNavigator();
 
@@ -35,6 +36,7 @@ const AppStack = () => (
     }}
   >
     <Stack.Screen name="Home" component={HomeScreen} />
+    <Stack.Screen name="CreateTrip" component={CreateTripScreen} />
   </Stack.Navigator>
 );
 
