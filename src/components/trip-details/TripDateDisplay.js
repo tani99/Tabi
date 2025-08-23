@@ -158,7 +158,6 @@ const TripDateDisplay = ({ trip, onUpdate }) => {
               onEditCancel={handleStartDateEditCancel}
               placeholder="Select start date..."
               formatDate={formatDate}
-              minDate={new Date()}
               maxDate={trip?.endDate ? new Date(trip.endDate) : undefined}
               style={styles.editableField}
             />
@@ -176,7 +175,7 @@ const TripDateDisplay = ({ trip, onUpdate }) => {
               onEditCancel={handleEndDateEditCancel}
               placeholder="Select end date..."
               formatDate={formatDate}
-              minDate={trip?.startDate ? new Date(trip.startDate) : new Date()}
+              minDate={trip?.startDate ? new Date(trip.startDate) : undefined}
               style={styles.editableField}
             />
           </View>

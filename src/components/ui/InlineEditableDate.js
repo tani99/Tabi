@@ -27,12 +27,12 @@ const InlineEditableDate = ({
 
   // Update edit value when prop value changes
   useEffect(() => {
-    setEditValue(value);
+    setEditValue(value ? new Date(value) : null);
   }, [value]);
 
   const handleEditStart = () => {
     if (!isEditMode) return;
-    setEditValue(value);
+    setEditValue(value ? new Date(value) : null);
     setError(null);
     setShowPicker(false); // Clear any previous picker state
     onEditStart?.();
@@ -43,7 +43,7 @@ const InlineEditableDate = ({
   };
 
   const handleEditCancel = () => {
-    setEditValue(value);
+    setEditValue(value ? new Date(value) : null);
     setError(null);
     onEditCancel?.();
   };
@@ -146,7 +146,7 @@ const InlineEditableDate = ({
 
         {showPicker && (
           <DateTimePicker
-            value={editValue || new Date()}
+            value={editValue ? new Date(editValue) : new Date()}
             mode={mode}
             display={Platform.OS === 'ios' ? 'spinner' : 'default'}
             onChange={handleDateChange}
