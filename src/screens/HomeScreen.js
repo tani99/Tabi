@@ -9,7 +9,7 @@ import { getUserTrips } from '../services/trips';
 import { logout } from '../services/auth';
 import { useAuth } from '../context/AuthContext';
 import { colors } from '../theme/colors';
-import { TRIP_STATUS, inferTripStatus } from '../utils/tripConstants';
+import { TRIP_STATUS, TRIP_STATUS_LABELS, inferTripStatus } from '../utils/tripConstants';
 
 const HomeScreen = ({ navigation }) => {
   const { user } = useAuth();
@@ -67,7 +67,7 @@ const HomeScreen = ({ navigation }) => {
       case TRIP_STATUS.UPCOMING:
         return colors.primary.main;
       case TRIP_STATUS.ONGOING:
-        return colors.success;
+        return colors.status.success.main;
       case TRIP_STATUS.COMPLETED:
         return colors.text.secondary;
       default:
@@ -76,36 +76,39 @@ const HomeScreen = ({ navigation }) => {
   };
 
   // Render recent trip item
-  const renderRecentTrip = ({ item }) => (
-    <TouchableOpacity 
-      style={styles.recentTripCard}
-      onPress={() => navigation.navigate('TripDetails', { tripId: item.id })}
-      activeOpacity={0.7}
-    >
-      <View style={styles.recentTripHeader}>
-        <Text style={styles.recentTripName} numberOfLines={1}>
-          {item.name}
-        </Text>
-        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
-          <Text style={styles.statusText}>{item.status}</Text>
+  const renderRecentTrip = ({ item }) => {
+    const tripStatus = inferTripStatus(item.startDate, item.endDate);
+    return (
+      <TouchableOpacity 
+        style={styles.recentTripCard}
+        onPress={() => navigation.navigate('TripDetails', { tripId: item.id })}
+        activeOpacity={0.7}
+      >
+        <View style={styles.recentTripHeader}>
+          <Text style={styles.recentTripName} numberOfLines={1}>
+            {item.name}
+          </Text>
+          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(tripStatus) }]}>
+            <Text style={styles.statusText}>{TRIP_STATUS_LABELS[tripStatus]}</Text>
+          </View>
         </View>
-      </View>
       
-      <View style={styles.recentTripInfo}>
-        <Ionicons name="location-outline" size={14} color={colors.text.secondary} />
-        <Text style={styles.recentTripLocation} numberOfLines={1}>
-          {item.location}
-        </Text>
-      </View>
-      
-      <View style={styles.recentTripInfo}>
-        <Ionicons name="calendar-outline" size={14} color={colors.text.secondary} />
-        <Text style={styles.recentTripDates}>
-          {formatDate(item.startDate)} - {formatDate(item.endDate)}
-        </Text>
-      </View>
-    </TouchableOpacity>
-  );
+              <View style={styles.recentTripInfo}>
+          <Ionicons name="location-outline" size={14} color={colors.text.secondary} />
+          <Text style={styles.recentTripLocation} numberOfLines={1}>
+            {item.location}
+          </Text>
+        </View>
+        
+        <View style={styles.recentTripInfo}>
+          <Ionicons name="calendar-outline" size={14} color={colors.text.secondary} />
+          <Text style={styles.recentTripDates}>
+            {formatDate(item.startDate)} - {formatDate(item.endDate)}
+          </Text>
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   const handleLogout = async () => {
     try {
