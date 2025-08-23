@@ -1,16 +1,25 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
-import { useAuth } from '../context/AuthContext';
-import { colors } from '../theme/colors';
 
-// Screens
+// Auth screens
 import WelcomeScreen from '../screens/WelcomeScreen';
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
+
+// Main screens
 import HomeScreen from '../screens/HomeScreen';
+import TripListScreen from '../screens/TripListScreen';
+import TripDetailsScreen from '../screens/TripDetailsScreen';
 import CreateTripScreen from '../screens/CreateTripScreen';
+import EditTripScreen from '../screens/EditTripScreen';
+
+// Context providers
+import { AuthProvider, useAuth } from '../context/AuthContext';
+import { TripDetailsProvider } from '../context/TripDetailsContext';
+import { EditModeProvider } from '../context/EditModeContext';
+import { colors } from '../theme/colors';
 
 const Stack = createStackNavigator();
 
@@ -37,6 +46,18 @@ const AppStack = () => (
   >
     <Stack.Screen name="Home" component={HomeScreen} />
     <Stack.Screen name="CreateTrip" component={CreateTripScreen} />
+    <Stack.Screen name="TripList" component={TripListScreen} />
+    <Stack.Screen 
+      name="TripDetails" 
+      component={(props) => (
+        <EditModeProvider>
+          <TripDetailsProvider>
+            <TripDetailsScreen {...props} />
+          </TripDetailsProvider>
+        </EditModeProvider>
+      )} 
+    />
+    <Stack.Screen name="EditTrip" component={EditTripScreen} />
   </Stack.Navigator>
 );
 

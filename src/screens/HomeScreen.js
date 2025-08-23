@@ -9,7 +9,7 @@ import { getUserTrips } from '../services/trips';
 import { logout } from '../services/auth';
 import { useAuth } from '../context/AuthContext';
 import { colors } from '../theme/colors';
-import { TRIP_STATUS } from '../utils/tripConstants';
+import { TRIP_STATUS, inferTripStatus } from '../utils/tripConstants';
 
 const HomeScreen = ({ navigation }) => {
   const { user } = useAuth();
@@ -35,17 +35,12 @@ const HomeScreen = ({ navigation }) => {
       const recent = trips.slice(0, 3);
       setRecentTrips(recent);
       
-      // Calculate statistics
+      // Calculate statistics using inferred status
       const stats = {
         total: trips.length,
-        planning: trips.filter(trip => trip.status === TRIP_STATUS.PLANNING).length,
-        active: trips.filter(trip => trip.status === TRIP_STATUS.ACTIVE).length,
-        upcoming: trips.filter(trip => {
-          if (!trip.startDate) return false;
-          const tripDate = new Date(trip.startDate);
-          const now = new Date();
-          return tripDate > now && trip.status !== TRIP_STATUS.CANCELLED;
-        }).length
+        upcoming: trips.filter(trip => inferTripStatus(trip.startDate, trip.endDate) === TRIP_STATUS.UPCOMING).length,
+        ongoing: trips.filter(trip => inferTripStatus(trip.startDate, trip.endDate) === TRIP_STATUS.ONGOING).length,
+        completed: trips.filter(trip => inferTripStatus(trip.startDate, trip.endDate) === TRIP_STATUS.COMPLETED).length
       };
       setTripStats(stats);
       
@@ -69,14 +64,12 @@ const HomeScreen = ({ navigation }) => {
   // Get status color
   const getStatusColor = (status) => {
     switch (status) {
-      case TRIP_STATUS.PLANNING:
+      case TRIP_STATUS.UPCOMING:
         return colors.primary.main;
-      case TRIP_STATUS.ACTIVE:
+      case TRIP_STATUS.ONGOING:
         return colors.success;
       case TRIP_STATUS.COMPLETED:
         return colors.text.secondary;
-      case TRIP_STATUS.CANCELLED:
-        return colors.error;
       default:
         return colors.text.secondary;
     }
@@ -86,7 +79,7 @@ const HomeScreen = ({ navigation }) => {
   const renderRecentTrip = ({ item }) => (
     <TouchableOpacity 
       style={styles.recentTripCard}
-      onPress={() => navigation.navigate('TripDetail', { tripId: item.id })}
+      onPress={() => navigation.navigate('TripDetails', { tripId: item.id })}
       activeOpacity={0.7}
     >
       <View style={styles.recentTripHeader}>
@@ -262,13 +255,13 @@ const HomeScreen = ({ navigation }) => {
             
             <TouchableOpacity 
               style={styles.quickActionCard}
-              onPress={() => navigation.navigate('TripList', { statusFilter: TRIP_STATUS.PLANNING })}
+              onPress={() => navigation.navigate('TripList', { statusFilter: TRIP_STATUS.UPCOMING })}
             >
               <View style={styles.quickActionIcon}>
                 <Ionicons name="calendar" size={32} color={colors.primary.main} />
               </View>
-              <Text style={styles.quickActionTitle}>Planning</Text>
-              <Text style={styles.quickActionSubtitle}>Trips in planning</Text>
+              <Text style={styles.quickActionTitle}>Upcoming</Text>
+              <Text style={styles.quickActionSubtitle}>Trips coming up</Text>
             </TouchableOpacity>
           </View>
         </View>

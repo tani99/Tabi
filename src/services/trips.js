@@ -12,7 +12,7 @@ import {
   serverTimestamp 
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import { TRIP_STATUS, TRIP_VALIDATION, DEFAULT_TRIP } from '../utils/tripConstants';
+import { TRIP_STATUS, TRIP_VALIDATION, DEFAULT_TRIP, inferTripStatus } from '../utils/tripConstants';
 
 // Collection name for trips
 const TRIPS_COLLECTION = 'trips';
@@ -111,9 +111,13 @@ export const createTrip = async (tripData, userId) => {
       throw new Error(`Validation failed: ${validationErrors.join(', ')}`);
     }
 
-    // Add timestamps
+    // Infer status based on dates
+    const inferredStatus = inferTripStatus(tripToCreate.startDate, tripToCreate.endDate);
+
+    // Add timestamps and inferred status
     const tripWithTimestamps = {
       ...tripToCreate,
+      status: inferredStatus,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     };
@@ -228,10 +232,17 @@ export const updateTrip = async (tripId, updateData, userId) => {
     }
 
     // Prepare update data with timestamp
-    const updateWithTimestamp = {
+    let updateWithTimestamp = {
       ...updateData,
       updatedAt: serverTimestamp()
     };
+
+    // If dates are being updated, re-infer the status
+    if (updateData.startDate || updateData.endDate) {
+      const currentTrip = { ...existingTrip, ...updateData };
+      const inferredStatus = inferTripStatus(currentTrip.startDate, currentTrip.endDate);
+      updateWithTimestamp.status = inferredStatus;
+    }
 
     // Update the trip
     await updateDoc(doc(db, TRIPS_COLLECTION, tripId), updateWithTimestamp);
@@ -275,41 +286,7 @@ export const deleteTrip = async (tripId, userId) => {
   }
 };
 
-/**
- * Get trips by status
- */
-export const getTripsByStatus = async (userId, status) => {
-  try {
-    console.log('Getting trips with status:', status, 'for user:', userId);
 
-    // Validate inputs
-    if (!userId) {
-      throw new Error('User ID is required');
-    }
-    if (!status || !Object.values(TRIP_STATUS).includes(status)) {
-      throw new Error('Valid status is required');
-    }
-
-    // Query trips for the specific user and status
-    const tripsQuery = query(
-      collection(db, TRIPS_COLLECTION),
-      where('userId', '==', userId),
-      where('status', '==', status),
-      orderBy('createdAt', 'desc')
-    );
-
-    const querySnapshot = await getDocs(tripsQuery);
-    
-    const trips = querySnapshot.docs.map(doc => convertTimestamps(doc));
-    
-    console.log(`Retrieved ${trips.length} trips with status ${status}`);
-    return trips;
-
-  } catch (error) {
-    console.error('Error getting trips by status:', error);
-    throw error;
-  }
-};
 
 /**
  * Search trips by name or location

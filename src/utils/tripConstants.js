@@ -1,25 +1,51 @@
 // Trip status constants
 export const TRIP_STATUS = {
-  PLANNING: 'planning',
-  ACTIVE: 'active',
-  COMPLETED: 'completed',
-  CANCELLED: 'cancelled'
+  UPCOMING: 'upcoming',
+  ONGOING: 'ongoing',
+  COMPLETED: 'completed'
 };
 
 // Trip status display names
 export const TRIP_STATUS_LABELS = {
-  [TRIP_STATUS.PLANNING]: 'Planning',
-  [TRIP_STATUS.ACTIVE]: 'Active',
-  [TRIP_STATUS.COMPLETED]: 'Completed',
-  [TRIP_STATUS.CANCELLED]: 'Cancelled'
+  [TRIP_STATUS.UPCOMING]: 'Upcoming',
+  [TRIP_STATUS.ONGOING]: 'Ongoing',
+  [TRIP_STATUS.COMPLETED]: 'Completed'
 };
 
 // Trip status colors (for UI)
 export const TRIP_STATUS_COLORS = {
-  [TRIP_STATUS.PLANNING]: '#FFA500', // Orange
-  [TRIP_STATUS.ACTIVE]: '#4CAF50',   // Green
-  [TRIP_STATUS.COMPLETED]: '#2196F3', // Blue
-  [TRIP_STATUS.CANCELLED]: '#F44336'  // Red
+  [TRIP_STATUS.UPCOMING]: '#FFA500', // Orange
+  [TRIP_STATUS.ONGOING]: '#4CAF50',   // Green
+  [TRIP_STATUS.COMPLETED]: '#2196F3'  // Blue
+};
+
+/**
+ * Infer trip status based on start and end dates
+ * @param {Date} startDate - Trip start date
+ * @param {Date} endDate - Trip end date
+ * @returns {string} - Inferred status (upcoming, ongoing, or completed)
+ */
+export const inferTripStatus = (startDate, endDate) => {
+  if (!startDate || !endDate) {
+    return TRIP_STATUS.UPCOMING; // Default to upcoming if dates are missing
+  }
+
+  const now = new Date();
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+
+  // Set time to start of day for accurate comparison
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const tripStart = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+  const tripEnd = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+
+  if (today < tripStart) {
+    return TRIP_STATUS.UPCOMING;
+  } else if (today >= tripStart && today <= tripEnd) {
+    return TRIP_STATUS.ONGOING;
+  } else {
+    return TRIP_STATUS.COMPLETED;
+  }
 };
 
 // Trip data model structure
@@ -31,7 +57,7 @@ export const TRIP_MODEL = {
   startDate: null,     // Start date (Date object)
   endDate: null,       // End date (Date object)
   description: '',     // Optional trip notes
-  status: TRIP_STATUS.PLANNING, // Trip status
+  // Note: status is now inferred from startDate and endDate
   createdAt: null,     // Creation timestamp
   updatedAt: null      // Last update timestamp
 };
@@ -66,6 +92,6 @@ export const DEFAULT_TRIP = {
   location: '',
   startDate: new Date(),
   endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
-  description: '',
-  status: TRIP_STATUS.PLANNING
+  description: ''
+  // Note: status is now inferred from startDate and endDate
 };

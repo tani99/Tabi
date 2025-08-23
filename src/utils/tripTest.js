@@ -1,5 +1,5 @@
 import { createTrip, getUserTrips, getTrip, updateTrip, deleteTrip } from '../services/trips';
-import { TRIP_STATUS } from './tripConstants';
+import { TRIP_STATUS, inferTripStatus } from './tripConstants';
 
 /**
  * Test utility for verifying trip collection structure and access control
@@ -18,7 +18,7 @@ export const testCreateTrip = async (userId) => {
     startDate: new Date('2024-06-01'),
     endDate: new Date('2024-06-07'),
     description: 'This is a test trip for development purposes',
-    status: TRIP_STATUS.PLANNING
+    status: TRIP_STATUS.UPCOMING
   };
   
   try {
@@ -78,8 +78,10 @@ export const testGetTrip = async (tripId, userId, expectedData) => {
       throw new Error(`Description mismatch: expected "${expectedData.description}", got "${retrievedTrip.description}"`);
     }
     
-    if (retrievedTrip.status !== expectedData.status) {
-      throw new Error(`Status mismatch: expected "${expectedData.status}", got "${retrievedTrip.status}"`);
+    // Status is now inferred, so we need to check the inferred status
+    const inferredStatus = inferTripStatus(retrievedTrip.startDate, retrievedTrip.endDate);
+    if (inferredStatus !== expectedData.status) {
+      throw new Error(`Status mismatch: expected "${expectedData.status}", got "${inferredStatus}"`);
     }
     
     // Assert dates are Date objects and match expected values
@@ -124,7 +126,6 @@ export const testUpdateTrip = async (tripId, userId) => {
   
   const updateData = {
     name: 'Updated Test Trip to Paris',
-    status: TRIP_STATUS.ACTIVE,
     description: 'Updated description for testing'
   };
   
@@ -140,9 +141,7 @@ export const testUpdateTrip = async (tripId, userId) => {
       throw new Error(`Updated name mismatch: expected "${updateData.name}", got "${updatedTrip.name}"`);
     }
     
-    if (updatedTrip.status !== updateData.status) {
-      throw new Error(`Updated status mismatch: expected "${updateData.status}", got "${updatedTrip.status}"`);
-    }
+    // Status is inferred, so we don't need to check it in updates
     
     if (updatedTrip.description !== updateData.description) {
       throw new Error(`Updated description mismatch: expected "${updateData.description}", got "${updatedTrip.description}"`);
@@ -187,8 +186,10 @@ export const testGetUserTrips = async (userId, expectedTripId) => {
       throw new Error(`Trip in list has wrong name: expected "Updated Test Trip to Paris", got "${foundTrip.name}"`);
     }
     
-    if (foundTrip.status !== TRIP_STATUS.ACTIVE) {
-      throw new Error(`Trip in list has wrong status: expected "${TRIP_STATUS.ACTIVE}", got "${foundTrip.status}"`);
+    // Status is inferred, so we need to check the inferred status
+    const inferredStatus = inferTripStatus(foundTrip.startDate, foundTrip.endDate);
+    if (inferredStatus !== TRIP_STATUS.ONGOING) {
+      throw new Error(`Trip in list has wrong status: expected "${TRIP_STATUS.ONGOING}", got "${inferredStatus}"`);
     }
     
     console.log('✅ User trips list verified correctly');
@@ -301,7 +302,7 @@ export const testAccessControl = async (userId, otherUserId) => {
       startDate: new Date('2024-07-01'),
       endDate: new Date('2024-07-05'),
       description: 'This trip belongs to another user',
-      status: TRIP_STATUS.PLANNING
+      status: TRIP_STATUS.UPCOMING
     };
     
     const otherUserTripId = await createTrip(otherUserTripData, otherUserId);

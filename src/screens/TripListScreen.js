@@ -13,10 +13,11 @@ import { Ionicons } from '@expo/vector-icons';
 import ScreenLayout from '../components/layout/ScreenLayout';
 import ScreenHeader from '../components/layout/ScreenHeader';
 import LoadingIndicator from '../components/ui/LoadingIndicator';
-import { getUserTrips, searchTrips, getTripsByStatus } from '../services/trips';
+import TripCard from '../components/TripCard';
+import { getUserTrips, searchTrips } from '../services/trips';
 import { useAuth } from '../context/AuthContext';
 import { colors } from '../theme/colors';
-import { TRIP_STATUS } from '../utils/tripConstants';
+import { TRIP_STATUS, inferTripStatus } from '../utils/tripConstants';
 
 const TripListScreen = ({ navigation }) => {
   const { user } = useAuth();
@@ -31,10 +32,9 @@ const TripListScreen = ({ navigation }) => {
   // Status filter options
   const statusFilters = [
     { key: 'all', label: 'All', icon: 'list' },
-    { key: TRIP_STATUS.PLANNING, label: 'Planning', icon: 'calendar-outline' },
-    { key: TRIP_STATUS.ACTIVE, label: 'Active', icon: 'airplane-outline' },
-    { key: TRIP_STATUS.COMPLETED, label: 'Completed', icon: 'checkmark-circle-outline' },
-    { key: TRIP_STATUS.CANCELLED, label: 'Cancelled', icon: 'close-circle-outline' },
+      { key: TRIP_STATUS.UPCOMING, label: 'Upcoming', icon: 'calendar-outline' },
+  { key: TRIP_STATUS.ONGOING, label: 'Ongoing', icon: 'airplane-outline' },
+  { key: TRIP_STATUS.COMPLETED, label: 'Completed', icon: 'checkmark-circle-outline' },
   ];
 
   // Sort options
@@ -57,12 +57,17 @@ const TripListScreen = ({ navigation }) => {
       if (searchTerm.trim()) {
         // Search trips
         tripsData = await searchTrips(user.uid, searchTerm);
-      } else if (currentStatus !== 'all') {
-        // Filter by status
-        tripsData = await getTripsByStatus(user.uid, currentStatus);
       } else {
-        // Get all trips
+        // Get all trips and filter client-side
         tripsData = await getUserTrips(user.uid);
+      }
+
+      // Filter by status if needed
+      if (currentStatus !== 'all') {
+        tripsData = tripsData.filter(trip => {
+          const inferredStatus = inferTripStatus(trip.startDate, trip.endDate);
+          return inferredStatus === currentStatus;
+        });
       }
 
       // Sort trips
@@ -127,70 +132,14 @@ const TripListScreen = ({ navigation }) => {
     setTrips(sortedTrips);
   };
 
-  // Format date for display
-  const formatDate = (date) => {
-    if (!date) return 'No date set';
-    return new Date(date).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    });
-  };
 
-  // Get status color
-  const getStatusColor = (status) => {
-    switch (status) {
-      case TRIP_STATUS.PLANNING:
-        return colors.primary.main;
-      case TRIP_STATUS.ACTIVE:
-        return colors.success;
-      case TRIP_STATUS.COMPLETED:
-        return colors.text.secondary;
-      case TRIP_STATUS.CANCELLED:
-        return colors.error;
-      default:
-        return colors.text.secondary;
-    }
-  };
 
   // Render trip item
   const renderTripItem = ({ item }) => (
-    <TouchableOpacity 
-      style={styles.tripCard}
-      onPress={() => navigation.navigate('TripDetail', { tripId: item.id })}
-      activeOpacity={0.7}
-    >
-      <View style={styles.tripCardHeader}>
-        <Text style={styles.tripName} numberOfLines={1}>
-          {item.name}
-        </Text>
-        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
-          <Text style={styles.statusText}>{item.status}</Text>
-        </View>
-      </View>
-      
-      <View style={styles.tripCardContent}>
-        <View style={styles.tripInfo}>
-          <Ionicons name="location-outline" size={16} color={colors.text.secondary} />
-          <Text style={styles.tripLocation} numberOfLines={1}>
-            {item.location}
-          </Text>
-        </View>
-        
-        <View style={styles.tripInfo}>
-          <Ionicons name="calendar-outline" size={16} color={colors.text.secondary} />
-          <Text style={styles.tripDates}>
-            {formatDate(item.startDate)} - {formatDate(item.endDate)}
-          </Text>
-        </View>
-        
-        {item.description && (
-          <Text style={styles.tripDescription} numberOfLines={2}>
-            {item.description}
-          </Text>
-        )}
-      </View>
-    </TouchableOpacity>
+    <TripCard
+      trip={item}
+      onPress={() => navigation.navigate('TripDetails', { tripId: item.id })}
+    />
   );
 
   // Render empty state
@@ -246,6 +195,10 @@ const TripListScreen = ({ navigation }) => {
         navigation={navigation}
         title="My Trips"
         showBackButton={true}
+        onBackPress={() => {
+          // Navigate back to Home screen
+          navigation.navigate('Home');
+        }}
         rightElement={
           <TouchableOpacity 
             style={styles.fab}
@@ -347,6 +300,7 @@ const TripListScreen = ({ navigation }) => {
           data={trips}
           renderItem={renderTripItem}
           keyExtractor={(item) => item.id}
+          style={styles.tripListContainer}
           contentContainerStyle={styles.tripList}
           showsVerticalScrollIndicator={false}
           refreshControl={
@@ -459,68 +413,13 @@ const styles = StyleSheet.create({
   sortChipTextActive: {
     color: colors.background.primary,
   },
+  tripListContainer: {
+    flex: 1,
+  },
   tripList: {
-    flexGrow: 1,
+    paddingBottom: 20,
   },
-  tripCard: {
-    backgroundColor: colors.background.secondary,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    elevation: 2,
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  tripCardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  tripName: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.text.primary,
-    flex: 1,
-    marginRight: 12,
-  },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.background.primary,
-    textTransform: 'capitalize',
-  },
-  tripCardContent: {
-    gap: 8,
-  },
-  tripInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  tripLocation: {
-    marginLeft: 8,
-    fontSize: 14,
-    color: colors.text.secondary,
-    flex: 1,
-  },
-  tripDates: {
-    marginLeft: 8,
-    fontSize: 14,
-    color: colors.text.secondary,
-  },
-  tripDescription: {
-    fontSize: 14,
-    color: colors.text.secondary,
-    lineHeight: 20,
-    marginTop: 4,
-  },
+
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',

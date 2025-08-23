@@ -9,7 +9,7 @@ import CustomButton from '../components/CustomButton';
 import { createTrip } from '../services/trips';
 import { useAuth } from '../context/AuthContext';
 import { colors } from '../theme/colors';
-import { TRIP_STATUS } from '../utils/tripConstants';
+import { inferTripStatus } from '../utils/tripConstants';
 
 const CreateTripScreen = ({ navigation }) => {
   const { user } = useAuth();
@@ -78,7 +78,7 @@ const CreateTripScreen = ({ navigation }) => {
         [
           {
             text: 'View Trip',
-            onPress: () => navigation.navigate('Home')
+            onPress: () => navigation.navigate('TripDetails', { tripId })
           },
           {
             text: 'Create Another',
@@ -225,8 +225,16 @@ const CreateTripScreen = ({ navigation }) => {
             <View style={styles.infoItem}>
               <Ionicons name="information-circle-outline" size={20} color={colors.text.secondary} />
               <Text style={styles.infoText}>
-                Your trip will be created with "Planning" status
+                Trip status will be automatically determined based on your selected dates
               </Text>
+            </View>
+            <View style={styles.statusPreview}>
+              <Text style={styles.statusPreviewLabel}>Preview Status:</Text>
+              <View style={[styles.statusBadge, { backgroundColor: colors.background.secondary }]}>
+                <Text style={styles.statusPreviewText}>
+                  {inferTripStatus(formData.startDate, formData.endDate)}
+                </Text>
+              </View>
             </View>
           </View>
         </View>
@@ -400,6 +408,33 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.text.secondary,
     lineHeight: 20,
+  },
+  statusPreview: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: colors.border.primary,
+  },
+  statusPreviewLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.text.primary,
+  },
+  statusBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border.primary,
+  },
+  statusPreviewText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.text.primary,
+    textTransform: 'capitalize',
   },
   errorText: {
     color: colors.status.error.main,
