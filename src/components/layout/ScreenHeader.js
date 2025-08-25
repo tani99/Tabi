@@ -168,6 +168,8 @@ const ScreenHeader = ({
     );
   };
 
+
+
   return (
     <View style={[styles.header, style]} {...props}>
       <View style={styles.leftSection}>
@@ -270,6 +272,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+
   titleEditContainer: {
     flexDirection: 'row',
     alignItems: 'center',

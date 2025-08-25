@@ -23,6 +23,7 @@ import { AuthProvider, useAuth } from '../context/AuthContext';
 import { TripDetailsProvider } from '../context/TripDetailsContext';
 import { EditModeProvider } from '../context/EditModeContext';
 import { ProfileProvider } from '../context/ProfileContext';
+import { ItineraryProvider } from '../context/ItineraryContext';
 import { colors } from '../theme/colors';
 
 const Stack = createStackNavigator();
@@ -68,7 +69,9 @@ const AppStack = () => (
       name="Itinerary" 
       component={(props) => (
         <TripDetailsProvider>
-          <ItineraryScreen {...props} />
+          <ItineraryProvider>
+            <ItineraryScreen {...props} />
+          </ItineraryProvider>
         </TripDetailsProvider>
       )} 
     />

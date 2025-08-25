@@ -20,6 +20,7 @@ export const colors = {
     secondary: '#64748B', // Secondary text color (medium slate)
     tertiary: '#475569',  // Tertiary text color (lighter slate)
     inverse: '#FFFFFF',   // Text on dark backgrounds
+    disabled: '#94A3B8',  // Disabled text color (light gray)
   },
 
   // Background Colors
@@ -61,7 +62,10 @@ export const colors = {
 
   // Shorthand colors for common use cases
   success: '#059669',     // Success emerald green shorthand
-  error: '#EF4444',       // Error red shorthand
+  error: {
+    main: '#EF4444',      // Error red shorthand
+    light: '#FEE2E2',     // Light error red for backgrounds
+  },
 
   // Button Colors
   button: {

@@ -1,6 +1,10 @@
 import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
+import { Alert } from 'react-native';
 import DayView from '../DayView';
+
+// Mock Alert.alert
+jest.spyOn(Alert, 'alert').mockImplementation(() => {});
 
 // Mock react-native-vector-icons if used
 jest.mock('react-native-vector-icons/MaterialIcons', () => 'Icon');
@@ -19,6 +23,7 @@ describe('DayView', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    Alert.alert.mockClear();
   });
 
   it('renders day tabs for trip duration', () => {
@@ -136,5 +141,124 @@ describe('DayView', () => {
     // Note: In a real test, you might need to add testID to the component
     // This is a placeholder for style testing
     expect(true).toBeTruthy(); // Placeholder assertion
+  });
+
+  it('shows delete button only for selected day when multiple days exist', () => {
+    const onDeleteDay = jest.fn();
+    const { getByTestId, queryByTestId } = render(
+      <DayView 
+        {...defaultProps} 
+        selectedDay={2}
+        onDeleteDay={onDeleteDay}
+      />
+    );
+    
+    // Should show delete button for selected day (day 2)
+    expect(getByTestId('delete-day-button-2')).toBeTruthy();
+    
+    // Should not show delete button for non-selected days
+    expect(queryByTestId('delete-day-button-1')).toBeNull();
+    expect(queryByTestId('delete-day-button-3')).toBeNull();
+    expect(queryByTestId('delete-day-button-4')).toBeNull();
+    expect(queryByTestId('delete-day-button-5')).toBeNull();
+  });
+
+  it('does not show delete button for single day trips', () => {
+    const onDeleteDay = jest.fn();
+    const singleDayProps = {
+      tripStartDate: '2024-03-15',
+      tripEndDate: '2024-03-15',
+      selectedDay: 1,
+      onDayChange: jest.fn(),
+      onDeleteDay,
+    };
+    
+    const { queryByTestId } = render(<DayView {...singleDayProps} />);
+    
+    // Should not show delete button for single day trips
+    expect(queryByTestId('delete-day-button-1')).toBeNull();
+  });
+
+  it('does not show delete button when onDeleteDay is not provided', () => {
+    const { queryByTestId } = render(<DayView {...defaultProps} selectedDay={2} />);
+    
+    // Should not show delete button when onDeleteDay is not provided
+    expect(queryByTestId('delete-day-button-2')).toBeNull();
+  });
+
+  it('shows add day button when onAddDay is provided', () => {
+    const onAddDay = jest.fn();
+    const { getByTestId } = render(
+      <DayView {...defaultProps} onAddDay={onAddDay} />
+    );
+    
+    // Should show add day button
+    expect(getByTestId('add-day-button')).toBeTruthy();
+  });
+
+  it('shows confirmation dialog when add day button is pressed', () => {
+    const onAddDay = jest.fn();
+    const { getByTestId } = render(
+      <DayView {...defaultProps} onAddDay={onAddDay} />
+    );
+    
+    fireEvent.press(getByTestId('add-day-button'));
+    
+    expect(Alert.alert).toHaveBeenCalledWith(
+      'Add Day',
+      'Are you sure you want to add a new day to your itinerary?',
+      expect.arrayContaining([
+        expect.objectContaining({ text: 'Cancel' }),
+        expect.objectContaining({ text: 'Add' })
+      ]),
+      { cancelable: true }
+    );
+  });
+
+  it('calls onAddDay when user confirms adding day', () => {
+    const onAddDay = jest.fn();
+    const { getByTestId } = render(
+      <DayView {...defaultProps} onAddDay={onAddDay} />
+    );
+    
+    fireEvent.press(getByTestId('add-day-button'));
+    
+    // Get the alert call and extract the add button's onPress
+    const alertCall = Alert.alert.mock.calls[0];
+    const addButton = alertCall[2].find(button => button.text === 'Add');
+    
+    // Simulate user pressing add
+    if (addButton && addButton.onPress) {
+      addButton.onPress();
+    }
+    
+    expect(onAddDay).toHaveBeenCalled();
+  });
+
+  it('does not call onAddDay when user cancels', () => {
+    const onAddDay = jest.fn();
+    const { getByTestId } = render(
+      <DayView {...defaultProps} onAddDay={onAddDay} />
+    );
+    
+    fireEvent.press(getByTestId('add-day-button'));
+    
+    // Get the alert call and extract the cancel button
+    const alertCall = Alert.alert.mock.calls[0];
+    const cancelButton = alertCall[2].find(button => button.text === 'Cancel');
+    
+    // Simulate user pressing cancel (if onPress exists)
+    if (cancelButton && cancelButton.onPress) {
+      cancelButton.onPress();
+    }
+    
+    expect(onAddDay).not.toHaveBeenCalled();
+  });
+
+  it('does not show add day button when onAddDay is not provided', () => {
+    const { queryByTestId } = render(<DayView {...defaultProps} />);
+    
+    // Should not show add day button when onAddDay is not provided
+    expect(queryByTestId('add-day-button')).toBeNull();
   });
 });

@@ -26,7 +26,8 @@ const ItineraryScreen = ({ navigation, route }) => {
     loading: itineraryLoading, 
     addDay, 
     getItinerary,
-    addMultipleDays 
+    addMultipleDays,
+    deleteDay 
   } = useItinerary();
   const [selectedDay, setSelectedDay] = useState(1);
 
@@ -72,6 +73,37 @@ const ItineraryScreen = ({ navigation, route }) => {
     }
   };
 
+  const handleDeleteDay = async (dayToDelete) => {
+    try {
+      // Get current days to determine which day to switch to
+      const currentDays = itinerary?.days || [];
+      const dayIndex = dayToDelete - 1; // Convert to 0-based index
+      
+      // Delete the day
+      await deleteDay(tripId, dayIndex);
+      
+      // Handle day switching logic
+      if (currentDays.length <= 1) {
+        // If this was the last day, stay on day 1
+        setSelectedDay(1);
+      } else if (dayToDelete === selectedDay) {
+        // If we deleted the currently selected day, switch to an adjacent day
+        if (dayToDelete === currentDays.length) {
+          // If we deleted the last day, switch to the previous day
+          setSelectedDay(dayToDelete - 1);
+        } else {
+          // Otherwise, switch to the next day (which will now be at the same index)
+          setSelectedDay(dayToDelete);
+        }
+      }
+      
+      console.log(`Deleted day ${dayToDelete}`);
+    } catch (error) {
+      console.error('Error deleting day:', error);
+      Alert.alert('Error', 'Failed to delete day. Please try again.');
+    }
+  };
+
   // Render loading state
   if (loading || itineraryLoading) {
     return (
@@ -109,6 +141,8 @@ const ItineraryScreen = ({ navigation, route }) => {
               tripEndDate={trip.endDate}
               selectedDay={selectedDay}
               onDayChange={handleDayChange}
+              onDeleteDay={handleDeleteDay}
+              onAddDay={() => handleAddDay((itinerary?.days?.length || 0) + 1)}
               storedDays={itinerary?.days || []}
               style={styles.dayView}
             />
@@ -156,19 +190,6 @@ const ItineraryScreen = ({ navigation, route }) => {
           </View>
         </ScrollView>
       </ScreenLayout>
-      
-      {/* Floating Action Button for adding days */}
-      {trip?.startDate && trip?.endDate && (
-        <TouchableOpacity
-          style={styles.fab}
-          onPress={() => handleAddDay((itinerary?.days?.length || 0) + 1)}
-          activeOpacity={0.8}
-          testID="add-day-fab"
-        >
-          <Ionicons name="calendar-outline" size={18} color={colors.text.inverse} />
-          <Text style={styles.fabText}>Add Day</Text>
-        </TouchableOpacity>
-      )}
     </View>
   );
 };
@@ -257,31 +278,6 @@ const styles = StyleSheet.create({
   createButtonText: {
     color: colors.text.inverse,
     fontSize: 16,
-    fontWeight: '600',
-    marginLeft: 8,
-  },
-  fab: {
-    position: 'absolute',
-    bottom: 24,
-    right: 24,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.primary.main,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 24,
-    shadowColor: colors.primary.main,
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  fabText: {
-    color: colors.text.inverse,
-    fontSize: 14,
     fontWeight: '600',
     marginLeft: 8,
   },

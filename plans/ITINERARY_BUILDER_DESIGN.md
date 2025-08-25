@@ -159,7 +159,17 @@ const itineraryData = {
 4. Update day tabs to show new day
 5. Add visual feedback when day is added
 
-#### Step 4: Empty Day View
+#### Step 4: Delete Day Button
+**Visual Result**: User can delete days and see tabs update accordingly
+1. Create `DeleteDayButton.js` component
+2. Add delete button to day tabs (trash icon)
+3. Implement delete day functionality in context
+4. Add confirmation dialog before deletion
+5. Handle switching to adjacent day if current day is deleted
+6. Add visual feedback when day is deleted
+7. Prevent deletion of last remaining day
+
+#### Step 5: Empty Day View
 **Visual Result**: User sees empty day content area with "No activities yet" message
 1. Create day content area below tabs
 2. Show empty state message for selected day
@@ -167,7 +177,7 @@ const itineraryData = {
 4. Switch between day content when tabs are tapped
 5. Add loading state for day switching
 
-#### Step 5: Add Activity Form
+#### Step 6: Add Activity Form
 **Visual Result**: User can tap "Add Activity" and see a form to create new activity
 1. Create activity creation modal using existing modal patterns
 2. Add title field (required, max 100 chars), start time picker, end time picker, and notes field (optional, max 500 chars)
@@ -178,7 +188,7 @@ const itineraryData = {
 7. Add time picker with 30-minute intervals
 8. Handle form submission and error states
 
-#### Step 6: Activity Display
+#### Step 7: Activity Display
 **Visual Result**: User can create an activity and see it displayed as a card in the day view
 1. Create `ActivityItem.js` component for activity cards with proper styling
 2. Display activity title (bold), time range (e.g., "9:00 AM - 11:00 AM"), and notes (if any)
@@ -190,7 +200,7 @@ const itineraryData = {
 8. Handle long activity titles with ellipsis
 9. Add accessibility labels for screen readers
 
-#### Step 7: Edit Activity
+#### Step 8: Edit Activity
 **Visual Result**: User can tap edit on an activity and modify its details
 1. Pre-populate form with existing activity data
 2. Implement activity update functionality
@@ -198,7 +208,7 @@ const itineraryData = {
 4. Handle validation errors
 5. Add confirmation for changes
 
-#### Step 8: Delete Activity
+#### Step 9: Delete Activity
 **Visual Result**: User can delete activities and see them removed from the day
 1. Add delete confirmation dialog
 2. Implement activity deletion
@@ -206,7 +216,7 @@ const itineraryData = {
 4. Add undo functionality (optional)
 5. Show success message
 
-#### Step 9: Remove Day
+#### Step 10: Remove Day
 **Visual Result**: User can remove days and see tabs update accordingly
 1. Add remove day button to day tabs
 2. Implement day deletion with confirmation
@@ -214,7 +224,7 @@ const itineraryData = {
 4. Switch to adjacent day if current day is deleted
 5. Add visual feedback for day removal
 
-#### Step 10: Data Persistence
+#### Step 11: Data Persistence
 **Visual Result**: User's itinerary changes are saved and persist between app sessions
 1. Connect to Firestore for data storage with proper security rules
 2. Implement real-time data sync with optimistic updates
