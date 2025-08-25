@@ -6,7 +6,6 @@ import ScreenHeader from '../components/layout/ScreenHeader';
 import CustomButton from '../components/CustomButton';
 import LoadingIndicator from '../components/ui/LoadingIndicator';
 import { getUserTrips } from '../services/trips';
-import { logout } from '../services/auth';
 import { useAuth } from '../context/AuthContext';
 import { colors } from '../theme/colors';
 import { TRIP_STATUS, TRIP_STATUS_LABELS, inferTripStatus } from '../utils/tripConstants';
@@ -110,14 +109,7 @@ const HomeScreen = ({ navigation }) => {
     );
   };
 
-  const handleLogout = async () => {
-    try {
-      await logout();
-      // Navigation will be handled by AuthContext
-    } catch (error) {
-      console.error('Logout error:', error);
-    }
-  };
+
 
   // Load trips on mount
   useEffect(() => {
@@ -134,8 +126,8 @@ const HomeScreen = ({ navigation }) => {
         title="Tabi"
         showBackButton={false}
         rightElement={
-          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-            <Ionicons name="log-out-outline" size={24} color={colors.icon.logout} />
+          <TouchableOpacity style={styles.profileButton} onPress={() => navigation.navigate('Profile')}>
+            <Ionicons name="person-circle-outline" size={28} color={colors.primary.main} />
           </TouchableOpacity>
         }
       />
@@ -292,7 +284,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  logoutButton: {
+  profileButton: {
     padding: 8,
   },
   welcomeContainer: {
