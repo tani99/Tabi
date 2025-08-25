@@ -4,7 +4,8 @@ import {
   Text, 
   StyleSheet, 
   TouchableOpacity,
-  ScrollView
+  ScrollView,
+  Alert
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import ScreenLayout from '../components/layout/ScreenLayout';
@@ -12,6 +13,7 @@ import ScreenHeader from '../components/layout/ScreenHeader';
 import LoadingIndicator from '../components/ui/LoadingIndicator';
 import DayView from '../components/DayView';
 import { useTripDetails } from '../context/TripDetailsContext';
+import { useItinerary } from '../context/ItineraryContext';
 import { useAuth } from '../context/AuthContext';
 import { colors } from '../theme/colors';
 
@@ -19,14 +21,34 @@ const ItineraryScreen = ({ navigation, route }) => {
   const { tripId, tripName } = route.params;
   const { user } = useAuth();
   const { currentTrip: trip, loading, loadTrip } = useTripDetails();
+  const { 
+    itinerary, 
+    loading: itineraryLoading, 
+    addDay, 
+    getItinerary,
+    addMultipleDays 
+  } = useItinerary();
   const [selectedDay, setSelectedDay] = useState(1);
 
   // Load trip data on mount
   useEffect(() => {
     if (tripId && user?.uid) {
       loadTrip(tripId, user.uid);
+      getItinerary(tripId);
     }
-  }, [tripId, user?.uid, loadTrip]);
+  }, [tripId, user?.uid, loadTrip, getItinerary]);
+
+  // Initialize days when trip data is loaded
+  useEffect(() => {
+    if (trip?.startDate && trip?.endDate && itinerary && itinerary.days.length === 0) {
+      const startDate = new Date(trip.startDate);
+      const endDate = new Date(trip.endDate);
+      const duration = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
+      
+      // Create initial days for the trip
+      addMultipleDays(tripId, 1, duration);
+    }
+  }, [trip, itinerary, tripId, addMultipleDays]);
 
   const handleBackPress = () => {
     navigation.goBack();
@@ -38,8 +60,20 @@ const ItineraryScreen = ({ navigation, route }) => {
     console.log(`Selected day: ${day}`);
   };
 
+  const handleAddDay = async (newDayNumber) => {
+    try {
+      await addDay(tripId, newDayNumber);
+      // Switch to the newly added day
+      setSelectedDay(newDayNumber);
+      console.log(`Added day ${newDayNumber}`);
+    } catch (error) {
+      console.error('Error adding day:', error);
+      Alert.alert('Error', 'Failed to add day. Please try again.');
+    }
+  };
+
   // Render loading state
-  if (loading) {
+  if (loading || itineraryLoading) {
     return (
       <ScreenLayout>
         <ScreenHeader 
@@ -54,76 +88,95 @@ const ItineraryScreen = ({ navigation, route }) => {
   }
 
   return (
-    <ScreenLayout>
-      <ScreenHeader 
-        navigation={navigation}
-        title={trip?.name || "Itinerary"}
-        showBackButton={true}
-        onBackPress={handleBackPress}
-      />
-      
-      <ScrollView 
-        style={styles.scrollView}
-        contentContainerStyle={styles.contentContainer}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Day Navigation - Only show if trip has dates */}
-        {trip?.startDate && trip?.endDate ? (
-          <DayView
-            tripStartDate={trip.startDate}
-            tripEndDate={trip.endDate}
-            selectedDay={selectedDay}
-            onDayChange={handleDayChange}
-            style={styles.dayView}
-          />
-        ) : (
-          <View style={styles.noDatesContainer}>
-            <Text style={styles.noDatesText}>
-              Please set trip dates to view itinerary
-            </Text>
-          </View>
-        )}
+    <View style={styles.container}>
+      <ScreenLayout>
+        <ScreenHeader 
+          navigation={navigation}
+          title={trip?.name || "Itinerary"}
+          showBackButton={true}
+          onBackPress={handleBackPress}
+        />
         
-        {/* Day Content */}
-        <View style={styles.dayContent}>
+        <ScrollView 
+          style={styles.scrollView}
+          contentContainerStyle={styles.contentContainer}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Day Navigation - Only show if trip has dates */}
           {trip?.startDate && trip?.endDate ? (
-            <Text style={styles.dayTitle}>Day {selectedDay} Itinerary</Text>
+            <DayView
+              tripStartDate={trip.startDate}
+              tripEndDate={trip.endDate}
+              selectedDay={selectedDay}
+              onDayChange={handleDayChange}
+              storedDays={itinerary?.days || []}
+              style={styles.dayView}
+            />
           ) : (
-            <Text style={styles.dayTitle}>Itinerary</Text>
+            <View style={styles.noDatesContainer}>
+              <Text style={styles.noDatesText}>
+                Please set trip dates to view itinerary
+              </Text>
+            </View>
           )}
           
-          {/* Empty State for Day */}
-          <View style={styles.emptyContainer}>
-            <View style={styles.illustrationContainer}>
-              <Ionicons 
-                name="map-outline" 
-                size={60} 
-                color={colors.text.secondary} 
-              />
+          {/* Day Content */}
+          <View style={styles.dayContent}>
+            {trip?.startDate && trip?.endDate ? (
+              <Text style={styles.dayTitle}>Day {selectedDay} Itinerary</Text>
+            ) : (
+              <Text style={styles.dayTitle}>Itinerary</Text>
+            )}
+            
+            {/* Empty State for Day */}
+            <View style={styles.emptyContainer}>
+              <View style={styles.illustrationContainer}>
+                <Ionicons 
+                  name="map-outline" 
+                  size={60} 
+                  color={colors.text.secondary} 
+                />
+              </View>
+              
+              <Text style={styles.emptyTitle}>
+                {trip?.startDate && trip?.endDate ? 'No activities planned' : 'No itinerary yet'}
+              </Text>
+              <Text style={styles.emptySubtitle}>
+                {trip?.startDate && trip?.endDate 
+                  ? `Add activities, places to visit, and travel plans for Day ${selectedDay}.`
+                  : 'Start building your perfect trip by adding activities, places to visit, and travel plans.'
+                }
+              </Text>
+              
+              <TouchableOpacity style={styles.createButton}>
+                <Ionicons name="add" size={20} color={colors.text.inverse} />
+                <Text style={styles.createButtonText}>Add Activity</Text>
+              </TouchableOpacity>
             </View>
-            
-            <Text style={styles.emptyTitle}>
-              {trip?.startDate && trip?.endDate ? 'No activities planned' : 'No itinerary yet'}
-            </Text>
-            <Text style={styles.emptySubtitle}>
-              {trip?.startDate && trip?.endDate 
-                ? `Add activities, places to visit, and travel plans for Day ${selectedDay}.`
-                : 'Start building your perfect trip by adding activities, places to visit, and travel plans.'
-              }
-            </Text>
-            
-            <TouchableOpacity style={styles.createButton}>
-              <Ionicons name="add" size={20} color={colors.text.inverse} />
-              <Text style={styles.createButtonText}>Add Activity</Text>
-            </TouchableOpacity>
           </View>
-        </View>
-      </ScrollView>
-    </ScreenLayout>
+        </ScrollView>
+      </ScreenLayout>
+      
+      {/* Floating Action Button for adding days */}
+      {trip?.startDate && trip?.endDate && (
+        <TouchableOpacity
+          style={styles.fab}
+          onPress={() => handleAddDay((itinerary?.days?.length || 0) + 1)}
+          activeOpacity={0.8}
+          testID="add-day-fab"
+        >
+          <Ionicons name="calendar-outline" size={18} color={colors.text.inverse} />
+          <Text style={styles.fabText}>Add Day</Text>
+        </TouchableOpacity>
+      )}
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
   scrollView: {
     flex: 1,
   },
@@ -204,6 +257,31 @@ const styles = StyleSheet.create({
   createButtonText: {
     color: colors.text.inverse,
     fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  fab: {
+    position: 'absolute',
+    bottom: 24,
+    right: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.primary.main,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 24,
+    shadowColor: colors.primary.main,
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  fabText: {
+    color: colors.text.inverse,
+    fontSize: 14,
     fontWeight: '600',
     marginLeft: 8,
   },
