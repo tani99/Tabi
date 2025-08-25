@@ -172,13 +172,9 @@ const TripDetailsScreen = ({ navigation, route }) => {
   if (loading) {
     return (
       <ScreenLayout>
-        <ScreenHeader 
-          navigation={navigation}
-          title="Trip Details" 
-          showBackButton={true}
-          onBackPress={handleBackPress}
-        />
-        <LoadingIndicator />
+        <View style={styles.loadingContainer}>
+          <LoadingIndicator />
+        </View>
       </ScreenLayout>
     );
   }
@@ -189,7 +185,6 @@ const TripDetailsScreen = ({ navigation, route }) => {
       <ScreenLayout>
         <ScreenHeader 
           navigation={navigation}
-          title="Trip Details" 
           showBackButton={true}
           onBackPress={handleBackPress}
         />
@@ -211,7 +206,6 @@ const TripDetailsScreen = ({ navigation, route }) => {
       <ScreenLayout>
         <ScreenHeader 
           navigation={navigation}
-          title="Trip Details" 
           showBackButton={true}
           onBackPress={handleBackPress}
         />
@@ -297,6 +291,11 @@ const TripDetailsScreen = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   errorContainer: {
     flex: 1,
