@@ -196,8 +196,8 @@ const TripListScreen = ({ navigation }) => {
         title="My Trips"
         showBackButton={true}
         onBackPress={() => {
-          // Navigate back to Home screen
-          navigation.navigate('Home');
+          // Go back to previous screen
+          navigation.goBack();
         }}
         rightElement={
           <TouchableOpacity 

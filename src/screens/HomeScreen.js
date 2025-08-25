@@ -13,12 +13,6 @@ import { TRIP_STATUS, TRIP_STATUS_LABELS, inferTripStatus } from '../utils/tripC
 const HomeScreen = ({ navigation }) => {
   const { user } = useAuth();
   const [recentTrips, setRecentTrips] = useState([]);
-  const [tripStats, setTripStats] = useState({
-    total: 0,
-    planning: 0,
-    active: 0,
-    upcoming: 0
-  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -33,15 +27,6 @@ const HomeScreen = ({ navigation }) => {
       // Get recent trips (limit to 3)
       const recent = trips.slice(0, 3);
       setRecentTrips(recent);
-      
-      // Calculate statistics using inferred status
-      const stats = {
-        total: trips.length,
-        upcoming: trips.filter(trip => inferTripStatus(trip.startDate, trip.endDate) === TRIP_STATUS.UPCOMING).length,
-        ongoing: trips.filter(trip => inferTripStatus(trip.startDate, trip.endDate) === TRIP_STATUS.ONGOING).length,
-        completed: trips.filter(trip => inferTripStatus(trip.startDate, trip.endDate) === TRIP_STATUS.COMPLETED).length
-      };
-      setTripStats(stats);
       
     } catch (err) {
       console.error('Error loading trips:', err);
@@ -133,43 +118,6 @@ const HomeScreen = ({ navigation }) => {
       />
 
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-        {/* Welcome Message */}
-        <View style={styles.welcomeContainer}>
-          <View style={styles.welcomeIcon}>
-            <Ionicons name="checkmark-circle" size={64} color={colors.icon.success} />
-          </View>
-          <Text style={styles.welcomeTitle}>Welcome to Tabi!</Text>
-          <Text style={styles.welcomeSubtitle}>
-            Ready to plan your next adventure?
-          </Text>
-          {user?.email && (
-            <Text style={styles.userEmail}>{user.email}</Text>
-          )}
-        </View>
-
-        {/* Trip Statistics */}
-        <View style={styles.statsContainer}>
-          <Text style={styles.sectionTitle}>Your Trips</Text>
-          <View style={styles.statsGrid}>
-            <View style={styles.statCard}>
-              <Text style={styles.statNumber}>{tripStats.total}</Text>
-              <Text style={styles.statLabel}>Total Trips</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Text style={styles.statNumber}>{tripStats.planning}</Text>
-              <Text style={styles.statLabel}>Planning</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Text style={styles.statNumber}>{tripStats.active}</Text>
-              <Text style={styles.statLabel}>Active</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Text style={styles.statNumber}>{tripStats.upcoming}</Text>
-              <Text style={styles.statLabel}>Upcoming</Text>
-            </View>
-          </View>
-        </View>
-
         {/* Recent Trips Preview */}
         <View style={styles.recentTripsContainer}>
           <View style={styles.sectionHeader}>
@@ -287,67 +235,11 @@ const styles = StyleSheet.create({
   profileButton: {
     padding: 8,
   },
-  welcomeContainer: {
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  welcomeIcon: {
-    marginBottom: 16,
-  },
-  welcomeTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: colors.text.primary,
-    marginBottom: 8,
-  },
-  welcomeSubtitle: {
-    fontSize: 16,
-    color: colors.text.secondary,
-    textAlign: 'center',
-    lineHeight: 24,
-    marginBottom: 8,
-  },
-  userEmail: {
-    fontSize: 14,
-    color: colors.primary.main,
-    fontWeight: '500',
-  },
   sectionTitle: {
     fontSize: 20,
     fontWeight: '600',
     color: colors.text.primary,
     marginBottom: 16,
-  },
-  statsContainer: {
-    marginBottom: 32,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: colors.background.secondary,
-    borderRadius: 12,
-    padding: 16,
-    marginHorizontal: 4,
-    alignItems: 'center',
-    elevation: 2,
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  statNumber: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: colors.primary.main,
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: colors.text.secondary,
-    textAlign: 'center',
   },
   recentTripsContainer: {
     marginBottom: 32,

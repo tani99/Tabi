@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
-import { createStackNavigator } from '@react-navigation/stack';
+import { createStackNavigator, CardStyleInterpolators } from '@react-navigation/stack';
 
 // Auth screens
 import WelcomeScreen from '../screens/WelcomeScreen';
@@ -45,6 +45,9 @@ const AppStack = () => (
     screenOptions={{
       headerShown: false,
       cardStyle: { backgroundColor: colors.navigation.background },
+      cardStyleInterpolator: CardStyleInterpolators.forHorizontalIOS,
+      gestureDirection: 'horizontal',
+      gestureEnabled: true,
     }}
   >
     <Stack.Screen name="Home" component={HomeScreen} />
