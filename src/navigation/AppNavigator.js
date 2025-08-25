@@ -64,7 +64,14 @@ const AppStack = () => (
         </EditModeProvider>
       )} 
     />
-    <Stack.Screen name="Itinerary" component={ItineraryScreen} />
+    <Stack.Screen 
+      name="Itinerary" 
+      component={(props) => (
+        <TripDetailsProvider>
+          <ItineraryScreen {...props} />
+        </TripDetailsProvider>
+      )} 
+    />
     <Stack.Screen name="EditTrip" component={EditTripScreen} />
     <Stack.Screen 
       name="Profile" 

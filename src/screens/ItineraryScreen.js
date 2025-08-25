@@ -10,29 +10,32 @@ import { Ionicons } from '@expo/vector-icons';
 import ScreenLayout from '../components/layout/ScreenLayout';
 import ScreenHeader from '../components/layout/ScreenHeader';
 import LoadingIndicator from '../components/ui/LoadingIndicator';
+import DayView from '../components/DayView';
+import { useTripDetails } from '../context/TripDetailsContext';
+import { useAuth } from '../context/AuthContext';
 import { colors } from '../theme/colors';
 
 const ItineraryScreen = ({ navigation, route }) => {
   const { tripId, tripName } = route.params;
-  const [loading, setLoading] = useState(true);
-  const [trip, setTrip] = useState(null);
+  const { user } = useAuth();
+  const { currentTrip: trip, loading, loadTrip } = useTripDetails();
+  const [selectedDay, setSelectedDay] = useState(1);
 
-  // Simulate loading while checking for existing itinerary
+  // Load trip data on mount
   useEffect(() => {
-    const loadTripData = async () => {
-      // TODO: Load trip data and check for existing itinerary
-      // For now, we'll simulate a loading delay
-      setTimeout(() => {
-        setTrip({ id: tripId, name: tripName });
-        setLoading(false);
-      }, 1000);
-    };
-
-    loadTripData();
-  }, [tripId, tripName]);
+    if (tripId && user?.uid) {
+      loadTrip(tripId, user.uid);
+    }
+  }, [tripId, user?.uid, loadTrip]);
 
   const handleBackPress = () => {
     navigation.goBack();
+  };
+
+  const handleDayChange = (day) => {
+    setSelectedDay(day);
+    // TODO: Load itinerary data for the selected day
+    console.log(`Selected day: ${day}`);
   };
 
   // Render loading state
@@ -64,25 +67,56 @@ const ItineraryScreen = ({ navigation, route }) => {
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
       >
-        {/* Empty State */}
-        <View style={styles.emptyContainer}>
-          <View style={styles.illustrationContainer}>
-            <Ionicons 
-              name="map-outline" 
-              size={80} 
-              color={colors.text.secondary} 
-            />
+        {/* Day Navigation - Only show if trip has dates */}
+        {trip?.startDate && trip?.endDate ? (
+          <DayView
+            tripStartDate={trip.startDate}
+            tripEndDate={trip.endDate}
+            selectedDay={selectedDay}
+            onDayChange={handleDayChange}
+            style={styles.dayView}
+          />
+        ) : (
+          <View style={styles.noDatesContainer}>
+            <Text style={styles.noDatesText}>
+              Please set trip dates to view itinerary
+            </Text>
           </View>
+        )}
+        
+        {/* Day Content */}
+        <View style={styles.dayContent}>
+          {trip?.startDate && trip?.endDate ? (
+            <Text style={styles.dayTitle}>Day {selectedDay} Itinerary</Text>
+          ) : (
+            <Text style={styles.dayTitle}>Itinerary</Text>
+          )}
           
-          <Text style={styles.emptyTitle}>No itinerary yet</Text>
-          <Text style={styles.emptySubtitle}>
-            Start building your perfect trip by adding activities, places to visit, and travel plans.
-          </Text>
-          
-          <TouchableOpacity style={styles.createButton}>
-            <Ionicons name="add" size={20} color={colors.text.inverse} />
-            <Text style={styles.createButtonText}>Create Itinerary</Text>
-          </TouchableOpacity>
+          {/* Empty State for Day */}
+          <View style={styles.emptyContainer}>
+            <View style={styles.illustrationContainer}>
+              <Ionicons 
+                name="map-outline" 
+                size={60} 
+                color={colors.text.secondary} 
+              />
+            </View>
+            
+            <Text style={styles.emptyTitle}>
+              {trip?.startDate && trip?.endDate ? 'No activities planned' : 'No itinerary yet'}
+            </Text>
+            <Text style={styles.emptySubtitle}>
+              {trip?.startDate && trip?.endDate 
+                ? `Add activities, places to visit, and travel plans for Day ${selectedDay}.`
+                : 'Start building your perfect trip by adding activities, places to visit, and travel plans.'
+              }
+            </Text>
+            
+            <TouchableOpacity style={styles.createButton}>
+              <Ionicons name="add" size={20} color={colors.text.inverse} />
+              <Text style={styles.createButtonText}>Add Activity</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </ScrollView>
     </ScreenLayout>
@@ -97,34 +131,58 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingHorizontal: 24,
   },
+  dayView: {
+    marginBottom: 24,
+  },
+  noDatesContainer: {
+    backgroundColor: colors.background.secondary,
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 24,
+    alignItems: 'center',
+  },
+  noDatesText: {
+    fontSize: 14,
+    color: colors.text.secondary,
+    textAlign: 'center',
+  },
+  dayContent: {
+    flex: 1,
+  },
+  dayTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.text.primary,
+    marginBottom: 24,
+  },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 60,
+    paddingVertical: 40,
   },
   illustrationContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     backgroundColor: colors.background.secondary,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: 24,
   },
   emptyTitle: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '700',
     color: colors.text.primary,
     marginBottom: 12,
     textAlign: 'center',
   },
   emptySubtitle: {
-    fontSize: 16,
+    fontSize: 14,
     color: colors.text.secondary,
     textAlign: 'center',
-    lineHeight: 24,
-    marginBottom: 40,
+    lineHeight: 20,
+    marginBottom: 32,
     paddingHorizontal: 20,
   },
   createButton: {
