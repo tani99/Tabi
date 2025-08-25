@@ -14,11 +14,14 @@ import TripListScreen from '../screens/TripListScreen';
 import TripDetailsScreen from '../screens/TripDetailsScreen';
 import CreateTripScreen from '../screens/CreateTripScreen';
 import EditTripScreen from '../screens/EditTripScreen';
+import ProfileScreen from '../screens/ProfileScreen';
+import EditProfileScreen from '../screens/EditProfileScreen';
 
 // Context providers
 import { AuthProvider, useAuth } from '../context/AuthContext';
 import { TripDetailsProvider } from '../context/TripDetailsContext';
 import { EditModeProvider } from '../context/EditModeContext';
+import { ProfileProvider } from '../context/ProfileContext';
 import { colors } from '../theme/colors';
 
 const Stack = createStackNavigator();
@@ -58,6 +61,22 @@ const AppStack = () => (
       )} 
     />
     <Stack.Screen name="EditTrip" component={EditTripScreen} />
+    <Stack.Screen 
+      name="Profile" 
+      component={(props) => (
+        <ProfileProvider>
+          <ProfileScreen {...props} />
+        </ProfileProvider>
+      )} 
+    />
+    <Stack.Screen 
+      name="EditProfile" 
+      component={(props) => (
+        <ProfileProvider>
+          <EditProfileScreen {...props} />
+        </ProfileProvider>
+      )} 
+    />
   </Stack.Navigator>
 );
 
