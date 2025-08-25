@@ -25,6 +25,9 @@ const ScreenHeader = ({
   showContextMenu = false,
   contextMenuActions = [],
   onContextMenuAction,
+  // Additional right button props
+  showItineraryButton = false,
+  onItineraryPress,
   ...props 
 }) => {
   const [editingTitle, setEditingTitle] = React.useState(false);
@@ -151,6 +154,20 @@ const ScreenHeader = ({
     );
   };
 
+  const renderItineraryButton = () => {
+    if (!showItineraryButton) return null;
+
+    return (
+      <TouchableOpacity
+        testID="itinerary-button"
+        style={styles.itineraryButton}
+        onPress={onItineraryPress}
+      >
+        <Ionicons name="map-outline" size={22} color={colors.primary.main} />
+      </TouchableOpacity>
+    );
+  };
+
   return (
     <View style={[styles.header, style]} {...props}>
       <View style={styles.leftSection}>
@@ -171,6 +188,7 @@ const ScreenHeader = ({
 
       <View style={styles.rightSection}>
         <View style={styles.rightButtons}>
+          {renderItineraryButton()}
           {renderEditButton()}
           {renderContextMenu()}
         </View>
@@ -241,6 +259,12 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   contextMenuButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  itineraryButton: {
     width: 40,
     height: 40,
     justifyContent: 'center',

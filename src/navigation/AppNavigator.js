@@ -12,6 +12,7 @@ import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 import HomeScreen from '../screens/HomeScreen';
 import TripListScreen from '../screens/TripListScreen';
 import TripDetailsScreen from '../screens/TripDetailsScreen';
+import ItineraryScreen from '../screens/ItineraryScreen';
 import CreateTripScreen from '../screens/CreateTripScreen';
 import EditTripScreen from '../screens/EditTripScreen';
 import ProfileScreen from '../screens/ProfileScreen';
@@ -63,6 +64,7 @@ const AppStack = () => (
         </EditModeProvider>
       )} 
     />
+    <Stack.Screen name="Itinerary" component={ItineraryScreen} />
     <Stack.Screen name="EditTrip" component={EditTripScreen} />
     <Stack.Screen 
       name="Profile" 

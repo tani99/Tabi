@@ -123,6 +123,14 @@ const TripDetailsScreen = ({ navigation, route }) => {
     Alert.alert('Share Trip', 'Share functionality will be implemented in a future update.');
   };
 
+  // Handle itinerary navigation
+  const handleItineraryPress = () => {
+    navigation.navigate('Itinerary', {
+      tripId: tripId,
+      tripName: trip?.name
+    });
+  };
+
   // Handle trip updates for inline editing
   const handleTripUpdate = async (updates) => {
     try {
@@ -226,6 +234,8 @@ const TripDetailsScreen = ({ navigation, route }) => {
         onEditToggle={handleEditToggle}
         isSaving={isSaving}
         hasUnsavedChanges={hasUnsavedChanges}
+        showItineraryButton={true}
+        onItineraryPress={handleItineraryPress}
         showContextMenu={true}
         contextMenuActions={[
           {
