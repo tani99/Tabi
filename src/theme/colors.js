@@ -33,15 +33,16 @@ export const colors = {
   border: {
     primary: '#E2E8F0',   // Main border color
     secondary: '#CBD5E1', // Secondary border color
-    focus: '#FF6B35',     // Border color when focused
+    light: '#F1F5F9',     // Light border color
+    focus: '#94A3B8',     // Border color when focused (warm gray)
     error: '#EF4444',     // Border color for error states
   },
 
   // Status Colors
   status: {
     success: {
-      main: '#10B981',    // Success green
-      light: '#059669',   // Lighter success green
+      main: '#059669',    // Success emerald green
+      light: '#047857',   // Lighter success emerald green
       background: '#ECFDF5', // Success background
       border: '#A7F3D0',  // Success border
     },
@@ -57,6 +58,10 @@ export const colors = {
       border: '#FED7AA',  // Warning border
     },
   },
+
+  // Shorthand colors for common use cases
+  success: '#059669',     // Success emerald green shorthand
+  error: '#EF4444',       // Error red shorthand
 
   // Button Colors
   button: {
@@ -81,7 +86,7 @@ export const colors = {
   input: {
     background: '#F8FAFC',
     border: '#E2E8F0',
-    borderFocus: '#FF6B35',
+    borderFocus: '#94A3B8',
     borderError: '#EF4444',
     placeholder: '#64748B',
     text: '#1E293B',
@@ -108,7 +113,7 @@ export const colors = {
 
   // Shadow Colors
   shadow: {
-    primary: '#FF6B35',
+    primary: '#000000',
     default: '#000000',
   },
 

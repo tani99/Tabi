@@ -1,5 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
 
 // TODO: Replace with your Firebase configuration for Tabi production
 // 1. Go to https://console.firebase.google.com/
@@ -25,5 +26,8 @@ export const auth = getAuth(app);
 
 // Initialize Google Auth Provider
 export const googleProvider = new GoogleAuthProvider();
+
+// Initialize Firestore and get a reference to the service
+export const db = getFirestore(app);
 
 export default app;
