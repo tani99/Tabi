@@ -53,8 +53,6 @@ const ItineraryScreen = ({ navigation, route }) => {
     }
   }, [tripId, user?.uid, loadTrip, getItinerary]);
 
-
-
   const handleBackPress = () => {
     navigation.goBack();
   };
@@ -111,7 +109,7 @@ const ItineraryScreen = ({ navigation, route }) => {
   // Render loading state
   if (loading || itineraryLoading) {
     return (
-      <ScreenLayout>
+      <ScreenLayout scrollable={false}>
         <ScreenHeader 
           navigation={navigation}
           title={tripName || "Itinerary"}
@@ -124,85 +122,83 @@ const ItineraryScreen = ({ navigation, route }) => {
   }
 
   return (
-    <View style={styles.container}>
-      <ScreenLayout>
-        <ScreenHeader 
-          navigation={navigation}
-          title={trip?.name || "Itinerary"}
-          showBackButton={true}
-          onBackPress={handleBackPress}
-        />
+    <ScreenLayout scrollable={false}>
+      <ScreenHeader 
+        navigation={navigation}
+        title={trip?.name || "Itinerary"}
+        showBackButton={true}
+        onBackPress={handleBackPress}
+      />
+      
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+        bounces={true}
+        alwaysBounceVertical={true}
+        overScrollMode="always"
+      >
+        {/* Day Navigation - Only show if trip has dates */}
+        {trip?.startDate && trip?.endDate ? (
+          <DayView
+            tripStartDate={trip.startDate}
+            tripEndDate={trip.endDate}
+            selectedDay={selectedDay}
+            onDayChange={handleDayChange}
+            onDeleteDay={handleDeleteDay}
+            onAddDay={() => handleAddDay((itinerary?.days?.length || 0) + 1)}
+            storedDays={itinerary?.days || []}
+            totalDays={totalDays}
+            style={styles.dayView}
+          />
+        ) : (
+          <View style={styles.noDatesContainer}>
+            <Text style={styles.noDatesText}>
+              Please set trip dates to view itinerary
+            </Text>
+          </View>
+        )}
         
-        <ScrollView 
-          style={styles.scrollView}
-          contentContainerStyle={styles.contentContainer}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Day Navigation - Only show if trip has dates */}
+        {/* Day Content */}
+        <View style={styles.dayContent}>
           {trip?.startDate && trip?.endDate ? (
-            <DayView
-              tripStartDate={trip.startDate}
-              tripEndDate={trip.endDate}
-              selectedDay={selectedDay}
-              onDayChange={handleDayChange}
-              onDeleteDay={handleDeleteDay}
-              onAddDay={() => handleAddDay((itinerary?.days?.length || 0) + 1)}
-              storedDays={itinerary?.days || []}
-              totalDays={totalDays}
-              style={styles.dayView}
-            />
+            <Text style={styles.dayTitle}>Day {selectedDay} Itinerary</Text>
           ) : (
-            <View style={styles.noDatesContainer}>
-              <Text style={styles.noDatesText}>
-                Please set trip dates to view itinerary
-              </Text>
-            </View>
+            <Text style={styles.dayTitle}>Itinerary</Text>
           )}
           
-          {/* Day Content */}
-          <View style={styles.dayContent}>
-            {trip?.startDate && trip?.endDate ? (
-              <Text style={styles.dayTitle}>Day {selectedDay} Itinerary</Text>
-            ) : (
-              <Text style={styles.dayTitle}>Itinerary</Text>
-            )}
-            
-            {/* Empty State for Day */}
-            <View style={styles.emptyContainer}>
-              <View style={styles.illustrationContainer}>
-                <Ionicons 
-                  name="map-outline" 
-                  size={60} 
-                  color={colors.text.secondary} 
-                />
-              </View>
-              
-              <Text style={styles.emptyTitle}>
-                {trip?.startDate && trip?.endDate ? 'No activities planned' : 'No itinerary yet'}
-              </Text>
-              <Text style={styles.emptySubtitle}>
-                {trip?.startDate && trip?.endDate 
-                  ? `Add activities, places to visit, and travel plans for Day ${selectedDay}.`
-                  : 'Start building your perfect trip by adding activities, places to visit, and travel plans.'
-                }
-              </Text>
-              
-              <TouchableOpacity style={styles.createButton}>
-                <Ionicons name="add" size={20} color={colors.text.inverse} />
-                <Text style={styles.createButtonText}>Add Activity</Text>
-              </TouchableOpacity>
+          {/* Empty State for Day */}
+          <View style={styles.emptyContainer}>
+            <View style={styles.illustrationContainer}>
+              <Ionicons 
+                name="map-outline" 
+                size={60} 
+                color={colors.text.secondary} 
+              />
             </View>
+            
+            <Text style={styles.emptyTitle}>
+              {trip?.startDate && trip?.endDate ? 'No activities planned' : 'No itinerary yet'}
+            </Text>
+            <Text style={styles.emptySubtitle}>
+              {trip?.startDate && trip?.endDate 
+                ? `Add activities, places to visit, and travel plans for Day ${selectedDay}.`
+                : 'Start building your perfect trip by adding activities, places to visit, and travel plans.'
+              }
+            </Text>
+            
+            <TouchableOpacity style={styles.createButton}>
+              <Ionicons name="add" size={20} color={colors.text.inverse} />
+              <Text style={styles.createButtonText}>Add Activity</Text>
+            </TouchableOpacity>
           </View>
-        </ScrollView>
-      </ScreenLayout>
-    </View>
+        </View>
+      </ScrollView>
+    </ScreenLayout>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
   scrollView: {
     flex: 1,
   },
