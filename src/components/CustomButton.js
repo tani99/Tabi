@@ -9,7 +9,8 @@ const CustomButton = ({
   disabled = false, 
   loading = false,
   style,
-  textStyle 
+  textStyle,
+  testID
 }) => {
   const buttonStyle = [
     styles.button,
@@ -31,6 +32,7 @@ const CustomButton = ({
       onPress={onPress}
       disabled={disabled || loading}
       activeOpacity={0.8}
+      testID={testID}
     >
       {loading ? (
         <ActivityIndicator 

@@ -12,6 +12,7 @@ import ScreenLayout from '../components/layout/ScreenLayout';
 import ScreenHeader from '../components/layout/ScreenHeader';
 import LoadingIndicator from '../components/ui/LoadingIndicator';
 import DayView from '../components/DayView';
+import AddActivityModal from '../components/AddActivityModal';
 import { useTripDetails } from '../context/TripDetailsContext';
 import { useItinerary } from '../context/ItineraryContext';
 import { useAuth } from '../context/AuthContext';
@@ -29,6 +30,10 @@ const ItineraryScreen = ({ navigation, route }) => {
     deleteDay 
   } = useItinerary();
   const [selectedDay, setSelectedDay] = useState(1);
+  
+  // Add Activity Modal state
+  const [showAddActivityModal, setShowAddActivityModal] = useState(false);
+  const [addingActivity, setAddingActivity] = useState(false);
 
   // Calculate total days based on trip dates or stored days
   const totalDays = React.useMemo(() => {
@@ -104,6 +109,45 @@ const ItineraryScreen = ({ navigation, route }) => {
       console.error('Error deleting day:', error);
       Alert.alert('Error', 'Failed to delete day. Please try again.');
     }
+  };
+
+  // Add Activity Modal handlers
+  const handleOpenAddActivityModal = () => {
+    setShowAddActivityModal(true);
+  };
+
+  const handleCloseAddActivityModal = () => {
+    setShowAddActivityModal(false);
+  };
+
+  const handleSaveActivity = async (activity) => {
+    try {
+      setAddingActivity(true);
+      
+      // TODO: Implement activity saving logic
+      // This will be connected to the itinerary service when it's implemented
+      console.log('Saving activity:', activity);
+      console.log('For day:', selectedDay);
+      console.log('Trip ID:', tripId);
+      
+      // For now, just show a success message
+      Alert.alert('Success', 'Activity added successfully!');
+      
+      // Close the modal
+      setShowAddActivityModal(false);
+      
+    } catch (error) {
+      console.error('Error saving activity:', error);
+      Alert.alert('Error', 'Failed to save activity. Please try again.');
+    } finally {
+      setAddingActivity(false);
+    }
+  };
+
+  const getLastActivityEndTime = () => {
+    // TODO: Get the end time of the last activity for the selected day
+    // This will be implemented when the itinerary service is connected
+    return null;
   };
 
   // Render loading state
@@ -187,13 +231,25 @@ const ItineraryScreen = ({ navigation, route }) => {
               }
             </Text>
             
-            <TouchableOpacity style={styles.createButton}>
+            <TouchableOpacity 
+              style={styles.createButton}
+              onPress={handleOpenAddActivityModal}
+            >
               <Ionicons name="add" size={20} color={colors.text.inverse} />
               <Text style={styles.createButtonText}>Add Activity</Text>
             </TouchableOpacity>
           </View>
         </View>
       </ScrollView>
+
+      {/* Add Activity Modal */}
+      <AddActivityModal
+        visible={showAddActivityModal}
+        onClose={handleCloseAddActivityModal}
+        onSave={handleSaveActivity}
+        lastActivityEndTime={getLastActivityEndTime()}
+        loading={addingActivity}
+      />
     </ScreenLayout>
   );
 };

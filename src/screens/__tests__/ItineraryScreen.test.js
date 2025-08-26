@@ -94,4 +94,23 @@ describe('ItineraryScreen', () => {
 
     expect(mockNavigation.goBack).toHaveBeenCalled();
   });
+
+  it('opens AddActivityModal when Add Activity button is pressed', () => {
+    const { getByText, queryByText } = render(
+      <NavigationContainer>
+        <ItineraryScreen navigation={mockNavigation} route={mockRoute} />
+      </NavigationContainer>
+    );
+
+    // Initially, the modal title should not be visible
+    expect(queryByText('Activity Title *')).toBeNull();
+
+    const addActivityButton = getByText('Add Activity');
+    fireEvent.press(addActivityButton);
+
+    // After pressing the button, the modal should be visible with its form fields
+    expect(getByText('Activity Title *')).toBeTruthy();
+    expect(getByText('Start Time *')).toBeTruthy();
+    expect(getByText('End Time *')).toBeTruthy();
+  });
 });
