@@ -26,35 +26,26 @@ const DayView = ({
   onAddDay,
   style,
   storedDays = [], // Add prop for stored days from Firestore
+  totalDays = 0, // Add totalDays as a prop
 }) => {
   const [days, setDays] = useState([]);
   const flatListRef = useRef(null);
   const animatedValues = useRef({});
-  const [totalDays, setTotalDays] = useState(0);
 
-  // Calculate trip duration and handle stored days
+  // Initialize animated values based on totalDays prop
   useEffect(() => {
-    if (!tripStartDate || !tripEndDate) return;
-
-    const startDate = new Date(tripStartDate);
-    const endDate = new Date(tripEndDate);
-    const duration = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
-    
-    // Use stored days if available, otherwise use calculated duration
-    const actualDays = storedDays.length > 0 ? storedDays.length : duration;
-    setTotalDays(actualDays);
+    if (totalDays <= 0) return;
     
     // Only create animated values for visible days and selected day
-    const visibleRange = Math.max(1, Math.min(50, actualDays)); // Limit to 50 days max
     const startDay = Math.max(1, selectedDay - 25);
-    const endDay = Math.min(actualDays, selectedDay + 25);
+    const endDay = Math.min(totalDays, selectedDay + 25);
     
     for (let i = startDay; i <= endDay; i++) {
       if (!animatedValues.current[i]) {
         animatedValues.current[i] = new Animated.Value(i === selectedDay ? 1 : 0);
       }
     }
-  }, [tripStartDate, tripEndDate, selectedDay, storedDays]);
+  }, [totalDays, selectedDay]);
 
   // Animate selected day change
   useEffect(() => {

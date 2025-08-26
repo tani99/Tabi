@@ -19,6 +19,7 @@ describe('DayView', () => {
     ...mockTripDates,
     selectedDay: 1,
     onDayChange: jest.fn(),
+    totalDays: 5, // 5 days for March 15-19
   };
 
   beforeEach(() => {
@@ -71,6 +72,7 @@ describe('DayView', () => {
       tripEndDate: '2024-03-15',
       selectedDay: 1,
       onDayChange: jest.fn(),
+      totalDays: 1,
     };
     
     const { getByText } = render(<DayView {...singleDayProps} />);
@@ -86,6 +88,7 @@ describe('DayView', () => {
         tripEndDate={null}
         selectedDay={1}
         onDayChange={jest.fn()}
+        totalDays={0}
       />
     );
     
@@ -98,6 +101,7 @@ describe('DayView', () => {
       tripEndDate: '2024-03-15',
       selectedDay: 1,
       onDayChange: jest.fn(),
+      totalDays: 0,
     };
     
     const { getByText } = render(<DayView {...invalidDateProps} />);
@@ -124,6 +128,7 @@ describe('DayView', () => {
       tripEndDate: '2024-03-15',
       selectedDay: 1,
       onDayChange: jest.fn(),
+      totalDays: 1,
     };
     
     const { getByText } = render(<DayView {...sameDateProps} />);
@@ -171,6 +176,7 @@ describe('DayView', () => {
       selectedDay: 1,
       onDayChange: jest.fn(),
       onDeleteDay,
+      totalDays: 1,
     };
     
     const { queryByTestId } = render(<DayView {...singleDayProps} />);

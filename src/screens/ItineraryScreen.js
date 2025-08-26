@@ -26,10 +26,24 @@ const ItineraryScreen = ({ navigation, route }) => {
     loading: itineraryLoading, 
     addDay, 
     getItinerary,
-    addMultipleDays,
     deleteDay 
   } = useItinerary();
   const [selectedDay, setSelectedDay] = useState(1);
+
+  // Calculate total days based on trip dates or stored days
+  const totalDays = React.useMemo(() => {
+    if (itinerary?.days?.length > 0) {
+      return itinerary.days.length;
+    }
+    
+    if (trip?.startDate && trip?.endDate) {
+      const startDate = new Date(trip.startDate);
+      const endDate = new Date(trip.endDate);
+      return Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
+    }
+    
+    return 0;
+  }, [trip?.startDate, trip?.endDate, itinerary?.days]);
 
   // Load trip data on mount
   useEffect(() => {
@@ -39,17 +53,7 @@ const ItineraryScreen = ({ navigation, route }) => {
     }
   }, [tripId, user?.uid, loadTrip, getItinerary]);
 
-  // Initialize days when trip data is loaded
-  useEffect(() => {
-    if (trip?.startDate && trip?.endDate && itinerary && itinerary.days.length === 0) {
-      const startDate = new Date(trip.startDate);
-      const endDate = new Date(trip.endDate);
-      const duration = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
-      
-      // Create initial days for the trip
-      addMultipleDays(tripId, 1, duration);
-    }
-  }, [trip, itinerary, tripId, addMultipleDays]);
+
 
   const handleBackPress = () => {
     navigation.goBack();
@@ -144,6 +148,7 @@ const ItineraryScreen = ({ navigation, route }) => {
               onDeleteDay={handleDeleteDay}
               onAddDay={() => handleAddDay((itinerary?.days?.length || 0) + 1)}
               storedDays={itinerary?.days || []}
+              totalDays={totalDays}
               style={styles.dayView}
             />
           ) : (
