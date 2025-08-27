@@ -179,14 +179,39 @@ const itineraryData = {
 
 #### Step 6: Add Activity Form
 **Visual Result**: User can tap "Add Activity" and see a form to create new activity
-1. Create activity creation modal using existing modal patterns
-2. Add title field (required, max 100 chars), start time picker, end time picker, and notes field (optional, max 500 chars)
-3. Implement form validation: title required, end time must be after start time, minimum 30-minute duration
-4. Add save/cancel buttons with proper styling
-5. Show form validation errors with specific messages
-6. Pre-populate start time based on last activity end time or default (9:00 AM)
-7. Add time picker with 30-minute intervals
-8. Handle form submission and error states
+
+**Status**: AddActivityModal component exists but needs backend integration
+
+##### 6a. Modal UI Implementation ✅ COMPLETE
+- ✅ Activity creation modal using existing modal patterns
+- ✅ Title field (required, max 100 chars) with CustomInput component
+- ✅ Start time picker with DateTimePicker integration
+- ✅ End time picker with DateTimePicker integration  
+- ✅ Notes field (optional, max 500 chars) with multiline support
+- ✅ Save/cancel buttons with proper styling and loading states
+- ✅ Modal animations and responsive design
+
+##### 6b. Form Validation ✅ COMPLETE
+- ✅ Title required validation
+- ✅ Character limits (100 for title, 500 for notes)
+- ✅ End time must be after start time validation
+- ✅ Minimum 30-minute duration validation
+- ✅ Real-time validation error display
+- ✅ Form state management with error clearing
+
+##### 6c. Time Management Features ✅ COMPLETE
+- ✅ Pre-populate start time based on last activity end time or default (9:00 AM)
+- ✅ Time picker with proper formatting (12-hour format)
+- ✅ Auto-adjust end time when start time changes to maintain duration
+- ✅ Smart default duration (1 hour) for new activities
+
+##### 6d. Activity Data Service Integration 🔄 IN PROGRESS
+- ❌ Implement `addActivityToDay` service function in itinerary.js
+- ❌ Connect modal save handler to Firestore backend
+- ❌ Add activity data to day's activities array
+- ❌ Implement optimistic updates for smooth UX
+- ❌ Add error handling for save failures
+- ❌ Generate proper activity IDs and timestamps
 
 #### Step 7: Activity Display
 **Visual Result**: User can create an activity and see it displayed as a card in the day view

@@ -13,6 +13,7 @@ import ScreenHeader from '../components/layout/ScreenHeader';
 import LoadingIndicator from '../components/ui/LoadingIndicator';
 import DayView from '../components/DayView';
 import AddActivityModal from '../components/AddActivityModal';
+import ActivityItem from '../components/ActivityItem';
 import { useTripDetails } from '../context/TripDetailsContext';
 import { useItinerary } from '../context/ItineraryContext';
 import { useAuth } from '../context/AuthContext';
@@ -28,13 +29,20 @@ const ItineraryScreen = ({ navigation, route }) => {
     addDay, 
     getItinerary,
     deleteDay,
-    addActivity 
+    addActivity,
+    updateActivity,
+    deleteActivity
   } = useItinerary();
   const [selectedDay, setSelectedDay] = useState(1);
   
   // Add Activity Modal state
   const [showAddActivityModal, setShowAddActivityModal] = useState(false);
   const [addingActivity, setAddingActivity] = useState(false);
+  
+  // Edit Activity Modal state
+  const [showEditActivityModal, setShowEditActivityModal] = useState(false);
+  const [editingActivity, setEditingActivity] = useState(null);
+  const [updatingActivity, setUpdatingActivity] = useState(false);
 
   // Calculate total days based on trip dates or stored days
   const totalDays = React.useMemo(() => {
@@ -171,22 +179,41 @@ const ItineraryScreen = ({ navigation, route }) => {
     }
   };
 
-  const getLastActivityEndTime = () => {
+  const getCurrentDayActivities = () => {
     try {
-      // Get the current day's activities
       if (!itinerary?.days || !selectedDay || selectedDay < 1) {
-        return null;
+        return [];
       }
       
       const dayIndex = selectedDay - 1;
       const currentDay = itinerary.days[dayIndex];
       
       if (!currentDay?.activities || currentDay.activities.length === 0) {
+        return [];
+      }
+      
+      // Sort activities by start time
+      return [...currentDay.activities].sort((a, b) => {
+        const aStartTime = new Date(a.startTime);
+        const bStartTime = new Date(b.startTime);
+        return aStartTime.getTime() - bStartTime.getTime();
+      });
+    } catch (error) {
+      console.error('Error getting current day activities:', error);
+      return [];
+    }
+  };
+
+  const getLastActivityEndTime = () => {
+    try {
+      const activities = getCurrentDayActivities();
+      
+      if (activities.length === 0) {
         return null;
       }
       
       // Sort activities by end time and get the last one
-      const sortedActivities = [...currentDay.activities].sort((a, b) => {
+      const sortedActivities = [...activities].sort((a, b) => {
         const aEndTime = new Date(a.endTime);
         const bEndTime = new Date(b.endTime);
         return aEndTime.getTime() - bEndTime.getTime();
@@ -201,6 +228,104 @@ const ItineraryScreen = ({ navigation, route }) => {
     } catch (error) {
       console.error('Error getting last activity end time:', error);
       return null;
+    }
+  };
+
+  // Activity handlers
+  const handleEditActivity = (activity) => {
+    setEditingActivity(activity);
+    setShowEditActivityModal(true);
+  };
+
+  const handleDeleteActivity = async (activityId) => {
+    try {
+      if (!tripId || !selectedDay || selectedDay < 1) {
+        throw new Error('Invalid trip or day selection');
+      }
+
+      const dayIndex = selectedDay - 1;
+      await deleteActivity(tripId, dayIndex, activityId);
+      
+      Alert.alert('Success', 'Activity deleted successfully!');
+    } catch (error) {
+      console.error('Error deleting activity:', error);
+      Alert.alert('Error', 'Failed to delete activity. Please try again.');
+    }
+  };
+
+  const handleUpdateActivity = async (updatedActivity) => {
+    try {
+      if (!tripId || !selectedDay || selectedDay < 1) {
+        throw new Error('Invalid trip or day selection');
+      }
+
+      // Check if there are any changes to avoid unnecessary updates
+      const hasChanges = (
+        editingActivity.title !== updatedActivity.title ||
+        editingActivity.notes !== updatedActivity.notes ||
+        new Date(editingActivity.startTime).getTime() !== updatedActivity.startTime.getTime() ||
+        new Date(editingActivity.endTime).getTime() !== updatedActivity.endTime.getTime()
+      );
+
+      if (!hasChanges) {
+        // No changes detected, just close the modal
+        setShowEditActivityModal(false);
+        setEditingActivity(null);
+        return;
+      }
+
+      // Show confirmation dialog for changes
+      Alert.alert(
+        'Confirm Changes',
+        'Are you sure you want to save these changes to the activity?',
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+          {
+            text: 'Save Changes',
+            style: 'default',
+            onPress: async () => {
+              try {
+                setUpdatingActivity(true);
+                const dayIndex = selectedDay - 1;
+                await updateActivity(tripId, dayIndex, editingActivity.id, updatedActivity);
+                
+                // Enhanced success feedback
+                Alert.alert(
+                  'Activity Updated',
+                  `"${updatedActivity.title}" has been successfully updated.`,
+                  [{ text: 'OK' }]
+                );
+                
+                setShowEditActivityModal(false);
+                setEditingActivity(null);
+              } catch (error) {
+                console.error('Error updating activity:', error);
+                
+                // Enhanced error handling with specific messages
+                let errorMessage = 'Failed to update activity. Please try again.';
+                if (error.message.includes('authenticated')) {
+                  errorMessage = 'Please log in to update activities.';
+                } else if (error.message.includes('not found')) {
+                  errorMessage = 'Activity not found. It may have been deleted.';
+                } else if (error.message.includes('network')) {
+                  errorMessage = 'Network error. Please check your connection and try again.';
+                }
+                
+                Alert.alert('Update Failed', errorMessage);
+              } finally {
+                setUpdatingActivity(false);
+              }
+            },
+          },
+        ],
+        { cancelable: true }
+      );
+    } catch (error) {
+      console.error('Error preparing activity update:', error);
+      Alert.alert('Error', 'Failed to prepare activity update. Please try again.');
     }
   };
 
@@ -265,34 +390,65 @@ const ItineraryScreen = ({ navigation, route }) => {
             <Text style={styles.dayTitle}>Itinerary</Text>
           )}
           
-          {/* Empty State for Day */}
-          <View style={styles.emptyContainer}>
-            <View style={styles.illustrationContainer}>
-              <Ionicons 
-                name="map-outline" 
-                size={60} 
-                color={colors.text.secondary} 
-              />
-            </View>
+          {(() => {
+            const activities = getCurrentDayActivities();
             
-            <Text style={styles.emptyTitle}>
-              {trip?.startDate && trip?.endDate ? 'No activities planned' : 'No itinerary yet'}
-            </Text>
-            <Text style={styles.emptySubtitle}>
-              {trip?.startDate && trip?.endDate 
-                ? `Add activities, places to visit, and travel plans for Day ${selectedDay}.`
-                : 'Start building your perfect trip by adding activities, places to visit, and travel plans.'
-              }
-            </Text>
-            
-            <TouchableOpacity 
-              style={styles.createButton}
-              onPress={handleOpenAddActivityModal}
-            >
-              <Ionicons name="add" size={20} color={colors.text.inverse} />
-              <Text style={styles.createButtonText}>Add Activity</Text>
-            </TouchableOpacity>
-          </View>
+            if (activities.length > 0) {
+              return (
+                <View style={styles.activitiesContainer}>
+                  {/* Activities List */}
+                  {activities.map((activity, index) => (
+                    <ActivityItem
+                      key={activity.id || `activity-${index}`}
+                      activity={activity}
+                      onEdit={handleEditActivity}
+                      onDelete={handleDeleteActivity}
+                      testID={`activity-item-${index}`}
+                    />
+                  ))}
+                  
+                  {/* Add Activity Button */}
+                  <TouchableOpacity 
+                    style={styles.addActivityButton}
+                    onPress={handleOpenAddActivityModal}
+                  >
+                    <Ionicons name="add" size={18} color={colors.primary.main} />
+                    <Text style={styles.addActivityButtonText}>Add Activity</Text>
+                  </TouchableOpacity>
+                </View>
+              );
+            } else {
+              return (
+                <View style={styles.emptyContainer}>
+                  <View style={styles.illustrationContainer}>
+                    <Ionicons 
+                      name="map-outline" 
+                      size={60} 
+                      color={colors.text.secondary} 
+                    />
+                  </View>
+                  
+                  <Text style={styles.emptyTitle}>
+                    {trip?.startDate && trip?.endDate ? 'No activities planned' : 'No itinerary yet'}
+                  </Text>
+                  <Text style={styles.emptySubtitle}>
+                    {trip?.startDate && trip?.endDate 
+                      ? `Add activities, places to visit, and travel plans for Day ${selectedDay}.`
+                      : 'Start building your perfect trip by adding activities, places to visit, and travel plans.'
+                    }
+                  </Text>
+                  
+                  <TouchableOpacity 
+                    style={styles.createButton}
+                    onPress={handleOpenAddActivityModal}
+                  >
+                    <Ionicons name="add" size={20} color={colors.text.inverse} />
+                    <Text style={styles.createButtonText}>Add Activity</Text>
+                  </TouchableOpacity>
+                </View>
+              );
+            }
+          })()}
         </View>
       </ScrollView>
 
@@ -303,6 +459,19 @@ const ItineraryScreen = ({ navigation, route }) => {
         onSave={handleSaveActivity}
         lastActivityEndTime={getLastActivityEndTime()}
         loading={addingActivity}
+      />
+
+      {/* Edit Activity Modal */}
+      <AddActivityModal
+        visible={showEditActivityModal}
+        onClose={() => {
+          setShowEditActivityModal(false);
+          setEditingActivity(null);
+        }}
+        onSave={handleUpdateActivity}
+        lastActivityEndTime={getLastActivityEndTime()}
+        loading={updatingActivity}
+        editingActivity={editingActivity}
       />
     </ScreenLayout>
   );
@@ -388,6 +557,28 @@ const styles = StyleSheet.create({
   },
   createButtonText: {
     color: colors.text.inverse,
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  activitiesContainer: {
+    flex: 1,
+  },
+  addActivityButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.background.secondary,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: colors.primary.main,
+    borderStyle: 'dashed',
+    marginTop: 16,
+  },
+  addActivityButtonText: {
+    color: colors.primary.main,
     fontSize: 16,
     fontWeight: '600',
     marginLeft: 8,

@@ -20,7 +20,8 @@ const AddActivityModal = ({
   onClose, 
   onSave, 
   lastActivityEndTime = null,
-  loading = false 
+  loading = false,
+  editingActivity = null 
 }) => {
   const [formData, setFormData] = useState({
     title: '',
@@ -35,37 +36,48 @@ const AddActivityModal = ({
   // Initialize form with default times when modal opens
   useEffect(() => {
     if (visible) {
-      const now = new Date();
-      
-      // Handle lastActivityEndTime properly - it might be a string or Date object
-      let defaultStartTime;
-      if (lastActivityEndTime) {
-        // If lastActivityEndTime is provided, use it as the start time
-        defaultStartTime = lastActivityEndTime instanceof Date 
-          ? new Date(lastActivityEndTime) 
-          : new Date(lastActivityEndTime);
+      if (editingActivity) {
+        // Populate form with existing activity data
+        setFormData({
+          title: editingActivity.title || '',
+          startTime: editingActivity.startTime ? new Date(editingActivity.startTime) : new Date(),
+          endTime: editingActivity.endTime ? new Date(editingActivity.endTime) : new Date(),
+          notes: editingActivity.notes || ''
+        });
+      } else {
+        // Initialize for new activity
+        const now = new Date();
         
-        // Validate the date
-        if (isNaN(defaultStartTime.getTime())) {
-          // If invalid, fall back to 9 AM today
+        // Handle lastActivityEndTime properly - it might be a string or Date object
+        let defaultStartTime;
+        if (lastActivityEndTime) {
+          // If lastActivityEndTime is provided, use it as the start time
+          defaultStartTime = lastActivityEndTime instanceof Date 
+            ? new Date(lastActivityEndTime) 
+            : new Date(lastActivityEndTime);
+          
+          // Validate the date
+          if (isNaN(defaultStartTime.getTime())) {
+            // If invalid, fall back to 9 AM today
+            defaultStartTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 9, 0, 0);
+          }
+        } else {
+          // Default to 9 AM today
           defaultStartTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 9, 0, 0);
         }
-      } else {
-        // Default to 9 AM today
-        defaultStartTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 9, 0, 0);
+        
+        const defaultEndTime = new Date(defaultStartTime.getTime() + 60 * 60 * 1000); // 1 hour later
+        
+        setFormData({
+          title: '',
+          startTime: defaultStartTime,
+          endTime: defaultEndTime,
+          notes: ''
+        });
       }
-      
-      const defaultEndTime = new Date(defaultStartTime.getTime() + 60 * 60 * 1000); // 1 hour later
-      
-      setFormData({
-        title: '',
-        startTime: defaultStartTime,
-        endTime: defaultEndTime,
-        notes: ''
-      });
       setErrors({});
     }
-  }, [visible, lastActivityEndTime]);
+  }, [visible, lastActivityEndTime, editingActivity]);
 
   const updateFormData = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -81,20 +93,40 @@ const AddActivityModal = ({
     // Title validation
     if (!formData.title.trim()) {
       newErrors.title = 'Activity title is required';
+    } else if (formData.title.trim().length < 3) {
+      newErrors.title = 'Title must be at least 3 characters long';
     } else if (formData.title.length > 100) {
       newErrors.title = 'Title must be 100 characters or less';
     }
     
     // Time validation
-    if (formData.endTime <= formData.startTime) {
+    const now = new Date();
+    const startTime = new Date(formData.startTime);
+    const endTime = new Date(formData.endTime);
+    
+    // Validate start time
+    if (isNaN(startTime.getTime())) {
+      newErrors.startTime = 'Please select a valid start time';
+    }
+    
+    // Validate end time
+    if (isNaN(endTime.getTime())) {
+      newErrors.endTime = 'Please select a valid end time';
+    } else if (endTime <= startTime) {
       newErrors.endTime = 'End time must be after start time';
     }
     
-    // Minimum duration validation (30 minutes)
-    const durationMs = formData.endTime.getTime() - formData.startTime.getTime();
+    // Minimum duration validation (15 minutes for more flexibility)
+    const durationMs = endTime.getTime() - startTime.getTime();
     const durationMinutes = durationMs / (1000 * 60);
-    if (durationMinutes < 30) {
-      newErrors.endTime = 'Activity must be at least 30 minutes long';
+    if (durationMinutes < 15) {
+      newErrors.endTime = 'Activity must be at least 15 minutes long';
+    }
+    
+    // Maximum duration validation (18 hours)
+    const durationHours = durationMinutes / 60;
+    if (durationHours > 18) {
+      newErrors.endTime = 'Activity cannot be longer than 18 hours';
     }
     
     // Notes validation
@@ -110,14 +142,18 @@ const AddActivityModal = ({
     if (!validateForm()) return;
 
     const activity = {
-      id: `activity_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       title: formData.title.trim(),
       startTime: formData.startTime,
       endTime: formData.endTime,
       notes: formData.notes.trim(),
-      createdAt: new Date(),
       updatedAt: new Date()
     };
+
+    // If not editing, add creation data
+    if (!editingActivity) {
+      activity.id = `activity_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      activity.createdAt = new Date();
+    }
 
     onSave(activity);
   };
@@ -186,6 +222,27 @@ const AddActivityModal = ({
 
   const timeOptions = getTimeOptions();
 
+  // Calculate and format duration
+  const getDurationDisplay = () => {
+    if (!formData.startTime || !formData.endTime) return '';
+    
+    const durationMs = formData.endTime.getTime() - formData.startTime.getTime();
+    const durationMinutes = Math.round(durationMs / (1000 * 60));
+    
+    if (durationMinutes <= 0) return '';
+    
+    const hours = Math.floor(durationMinutes / 60);
+    const minutes = durationMinutes % 60;
+    
+    if (hours === 0) {
+      return `${minutes} minutes`;
+    } else if (minutes === 0) {
+      return `${hours} hour${hours > 1 ? 's' : ''}`;
+    } else {
+      return `${hours} hour${hours > 1 ? 's' : ''} ${minutes} minutes`;
+    }
+  };
+
   const renderTimeOption = ({ item }) => (
     <TouchableOpacity
       style={styles.timeOption}
@@ -206,7 +263,9 @@ const AddActivityModal = ({
         <View style={styles.modalContent}>
           {/* Header */}
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Add Activity</Text>
+            <Text style={styles.modalTitle}>
+              {editingActivity ? 'Edit Activity' : 'Add Activity'}
+            </Text>
             <TouchableOpacity onPress={onClose} style={styles.closeButton} testID="close-button">
               <Ionicons name="close" size={24} color={colors.text.secondary} />
             </TouchableOpacity>
@@ -214,15 +273,20 @@ const AddActivityModal = ({
 
           <ScrollView style={styles.formContainer} showsVerticalScrollIndicator={false}>
             {/* Title Field */}
-            <CustomInput
-              label="Activity Title *"
-              value={formData.title}
-              onChangeText={(text) => updateFormData('title', text)}
-              placeholder="Enter activity title"
-              error={errors.title}
-              maxLength={100}
-              autoCapitalize="words"
-            />
+            <View style={styles.inputContainer}>
+              <CustomInput
+                label="Activity Title *"
+                value={formData.title}
+                onChangeText={(text) => updateFormData('title', text)}
+                placeholder="Enter activity title"
+                error={errors.title}
+                maxLength={100}
+                autoCapitalize="words"
+              />
+              <Text style={styles.characterCounter}>
+                {formData.title.length}/100
+              </Text>
+            </View>
 
             {/* Start Time Field */}
             <View style={styles.timeFieldContainer}>
@@ -252,19 +316,34 @@ const AddActivityModal = ({
               {errors.endTime && <Text style={styles.errorText}>{errors.endTime}</Text>}
             </View>
 
+            {/* Duration Display */}
+            {getDurationDisplay() && (
+              <View style={styles.durationContainer}>
+                <Ionicons name="time" size={16} color={colors.primary.main} />
+                <Text style={styles.durationText}>
+                  Duration: {getDurationDisplay()}
+                </Text>
+              </View>
+            )}
+
             {/* Notes Field */}
-            <CustomInput
-              label="Notes (Optional)"
-              value={formData.notes}
-              onChangeText={(text) => updateFormData('notes', text)}
-              placeholder="Add any additional notes..."
-              error={errors.notes}
-              maxLength={500}
-              multiline={true}
-              numberOfLines={3}
-              textAlignVertical="top"
-              style={styles.notesInput}
-            />
+            <View style={styles.inputContainer}>
+              <CustomInput
+                label="Notes (Optional)"
+                value={formData.notes}
+                onChangeText={(text) => updateFormData('notes', text)}
+                placeholder="Add any additional notes..."
+                error={errors.notes}
+                maxLength={500}
+                multiline={true}
+                numberOfLines={3}
+                textAlignVertical="top"
+                style={styles.notesInput}
+              />
+              <Text style={styles.characterCounter}>
+                {formData.notes.length}/500
+              </Text>
+            </View>
           </ScrollView>
 
           {/* Footer Buttons */}
@@ -276,7 +355,7 @@ const AddActivityModal = ({
               style={styles.cancelButton}
             />
             <CustomButton
-              title="Save Activity"
+              title="Save"
               onPress={handleSave}
               loading={loading}
               disabled={loading}
@@ -378,6 +457,31 @@ const styles = StyleSheet.create({
   formContainer: {
     paddingHorizontal: 20,
     paddingVertical: 16,
+  },
+  inputContainer: {
+    marginBottom: 16,
+  },
+  characterCounter: {
+    fontSize: 12,
+    color: colors.text.secondary,
+    textAlign: 'right',
+    marginTop: 4,
+    marginRight: 4,
+  },
+  durationContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.background.secondary,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  durationText: {
+    fontSize: 14,
+    color: colors.primary.main,
+    fontWeight: '600',
+    marginLeft: 6,
   },
   timeFieldContainer: {
     marginBottom: 16,

@@ -13,7 +13,6 @@ import {
   writeBatch
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import { calculateTripDays } from '../utils/tripConstants';
 
 // Collection names
 const ITINERARIES_COLLECTION = 'itineraries';
@@ -23,10 +22,25 @@ const ITINERARIES_COLLECTION = 'itineraries';
  */
 const convertTimestamps = (doc) => {
   const data = doc.data();
+  
+  // Convert timestamps in activities within days
+  const convertedDays = (data.days || []).map(day => ({
+    ...day,
+    createdAt: day.createdAt?.toDate ? day.createdAt.toDate() : day.createdAt,
+    updatedAt: day.updatedAt?.toDate ? day.updatedAt.toDate() : day.updatedAt,
+    activities: (day.activities || []).map(activity => ({
+      ...activity,
+      startTime: activity.startTime?.toDate ? activity.startTime.toDate() : activity.startTime,
+      endTime: activity.endTime?.toDate ? activity.endTime.toDate() : activity.endTime,
+      createdAt: activity.createdAt?.toDate ? activity.createdAt.toDate() : activity.createdAt,
+      updatedAt: activity.updatedAt?.toDate ? activity.updatedAt.toDate() : activity.updatedAt
+    }))
+  }));
+  
   return {
     id: doc.id,
     ...data,
-    days: data.days || [], // Ensure days is always an array
+    days: convertedDays,
     createdAt: data.createdAt?.toDate() || null,
     updatedAt: data.updatedAt?.toDate() || null
   };
@@ -432,13 +446,13 @@ export const addActivityToDay = async (tripId, userId, dayIndex, activityData) =
     const activity = {
       id: `activity_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       title: activityData.title.trim(),
-      startTime: activityData.startTime instanceof Date ? activityData.startTime.toISOString() : activityData.startTime,
-      endTime: activityData.endTime instanceof Date ? activityData.endTime.toISOString() : activityData.endTime,
+      startTime: activityData.startTime instanceof Date ? activityData.startTime : new Date(activityData.startTime),
+      endTime: activityData.endTime instanceof Date ? activityData.endTime : new Date(activityData.endTime),
       notes: activityData.notes ? activityData.notes.trim() : '',
       location: activityData.location || null,
       type: activityData.type || 'general',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      createdAt: new Date(),
+      updatedAt: new Date()
     };
 
     // Update the specific day's activities array
@@ -452,7 +466,7 @@ export const addActivityToDay = async (tripId, userId, dayIndex, activityData) =
 
     // Add the new activity to the day's activities
     currentDay.activities = [...currentDay.activities, activity];
-    currentDay.updatedAt = new Date().toISOString();
+    currentDay.updatedAt = new Date();
 
     // Update the itinerary document
     await updateDoc(doc(db, ITINERARIES_COLLECTION, itinerary.id), {
@@ -522,13 +536,21 @@ export const updateActivityInDay = async (tripId, userId, dayIndex, activityId, 
       throw new Error(`Activity with ID ${activityId} not found`);
     }
 
-    // Update the activity
+    // Update the activity (ensure timestamps are Date objects for Firestore)
+    const updatedActivityData = { ...updateData };
+    if (updatedActivityData.startTime && !(updatedActivityData.startTime instanceof Date)) {
+      updatedActivityData.startTime = new Date(updatedActivityData.startTime);
+    }
+    if (updatedActivityData.endTime && !(updatedActivityData.endTime instanceof Date)) {
+      updatedActivityData.endTime = new Date(updatedActivityData.endTime);
+    }
+    
     currentDay.activities[activityIndex] = {
       ...currentDay.activities[activityIndex],
-      ...updateData,
-      updatedAt: new Date().toISOString()
+      ...updatedActivityData,
+      updatedAt: new Date()
     };
-    currentDay.updatedAt = new Date().toISOString();
+    currentDay.updatedAt = new Date();
 
     // Update the itinerary document
     await updateDoc(doc(db, ITINERARIES_COLLECTION, itinerary.id), {
@@ -597,7 +619,7 @@ export const deleteActivityFromDay = async (tripId, userId, dayIndex, activityId
       throw new Error(`Activity with ID ${activityId} not found`);
     }
 
-    currentDay.updatedAt = new Date().toISOString();
+    currentDay.updatedAt = new Date();
 
     // Update the itinerary document
     await updateDoc(doc(db, ITINERARIES_COLLECTION, itinerary.id), {
@@ -720,78 +742,6 @@ export const addMultipleDays = async (tripId, userId, startDay, endDay) => {
 
   } catch (error) {
     console.error('Error adding multiple days:', error);
-    throw error;
-  }
-};
-
-/**
- * Initialize an itinerary for a newly created trip
- * This function creates an itinerary with the appropriate number of days based on trip dates
- */
-export const initializeItineraryForTrip = async (tripId, userId, startDate, endDate) => {
-  try {
-    console.log('Initializing itinerary for trip:', tripId);
-
-    // Validate inputs
-    if (!tripId) {
-      throw new Error('Trip ID is required');
-    }
-    if (!userId) {
-      throw new Error('User ID is required');
-    }
-    if (!startDate || !endDate) {
-      throw new Error('Start date and end date are required');
-    }
-
-    // Calculate the number of days for the trip
-    const numberOfDays = calculateTripDays(startDate, endDate);
-    
-    console.log(`Trip has ${numberOfDays} days, creating itinerary...`);
-
-    // Create or get the itinerary
-    const itinerary = await getOrCreateItinerary(tripId, userId);
-
-    // If itinerary already has days, don't reinitialize
-    if (itinerary.days && itinerary.days.length > 0) {
-      console.log('Itinerary already has days, skipping initialization');
-      return itinerary;
-    }
-
-    // Create days with proper date assignments
-    const newDays = [];
-    for (let i = 0; i < numberOfDays; i++) {
-      // Calculate the date for this day
-      const dayDate = new Date(startDate);
-      dayDate.setDate(dayDate.getDate() + i);
-      
-      const newDay = {
-        id: `day_${Date.now()}_${i}_${Math.random().toString(36).substr(2, 9)}`,
-        date: dayDate.toISOString().split('T')[0], // Store as YYYY-MM-DD format
-        weather: null,
-        activities: [],
-        notes: '',
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
-      
-      newDays.push(newDay);
-    }
-
-    // Update the itinerary with the new days
-    await updateDoc(doc(db, ITINERARIES_COLLECTION, itinerary.id), {
-      days: newDays,
-      updatedAt: serverTimestamp()
-    });
-    
-    console.log(`Successfully initialized itinerary with ${numberOfDays} days`);
-    
-    return {
-      ...itinerary,
-      days: newDays
-    };
-
-  } catch (error) {
-    console.error('Error initializing itinerary for trip:', error);
     throw error;
   }
 };
