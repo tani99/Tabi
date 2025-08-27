@@ -13,6 +13,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { TRIP_STATUS, TRIP_VALIDATION, DEFAULT_TRIP, inferTripStatus } from '../utils/tripConstants';
+import { initializeItineraryForTrip } from './itinerary';
 
 // Collection name for trips
 const TRIPS_COLLECTION = 'trips';
@@ -126,6 +127,17 @@ export const createTrip = async (tripData, userId) => {
     const docRef = await addDoc(collection(db, TRIPS_COLLECTION), tripWithTimestamps);
     
     console.log('Trip created successfully with ID:', docRef.id);
+    
+    // Initialize itinerary for the newly created trip
+    try {
+      await initializeItineraryForTrip(docRef.id, userId, tripToCreate.startDate, tripToCreate.endDate);
+      console.log('Itinerary initialized successfully for trip:', docRef.id);
+    } catch (itineraryError) {
+      console.error('Error initializing itinerary for trip:', itineraryError);
+      // Don't fail the trip creation if itinerary initialization fails
+      // The itinerary can be created later when needed
+    }
+    
     return docRef.id;
 
   } catch (error) {

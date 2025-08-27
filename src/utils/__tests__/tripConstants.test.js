@@ -1,4 +1,4 @@
-import { TRIP_STATUS, inferTripStatus } from '../tripConstants';
+import { TRIP_STATUS, inferTripStatus, calculateTripDays } from '../tripConstants';
 
 describe('tripConstants', () => {
   describe('inferTripStatus', () => {
@@ -64,6 +64,92 @@ describe('tripConstants', () => {
       
       const status = inferTripStatus(startDate, endDate);
       expect(status).toBe(TRIP_STATUS.UPCOMING);
+    });
+  });
+
+  describe('calculateTripDays', () => {
+    it('should calculate 1 day for same start and end date', () => {
+      const startDate = new Date('2024-01-01');
+      const endDate = new Date('2024-01-01');
+      
+      const days = calculateTripDays(startDate, endDate);
+      expect(days).toBe(1);
+    });
+
+    it('should calculate correct days for multi-day trips', () => {
+      const startDate = new Date('2024-01-01');
+      const endDate = new Date('2024-01-03');
+      
+      const days = calculateTripDays(startDate, endDate);
+      expect(days).toBe(3);
+    });
+
+    it('should calculate correct days for a week-long trip', () => {
+      const startDate = new Date('2024-01-01');
+      const endDate = new Date('2024-01-07');
+      
+      const days = calculateTripDays(startDate, endDate);
+      expect(days).toBe(7);
+    });
+
+    it('should calculate correct days for a month-long trip', () => {
+      const startDate = new Date('2024-01-01');
+      const endDate = new Date('2024-01-31');
+      
+      const days = calculateTripDays(startDate, endDate);
+      expect(days).toBe(31);
+    });
+
+    it('should handle leap year February correctly', () => {
+      const startDate = new Date('2024-02-01');
+      const endDate = new Date('2024-02-29'); // 2024 is a leap year
+      
+      const days = calculateTripDays(startDate, endDate);
+      expect(days).toBe(29);
+    });
+
+    it('should handle cross-month trips correctly', () => {
+      const startDate = new Date('2024-01-30');
+      const endDate = new Date('2024-02-02');
+      
+      const days = calculateTripDays(startDate, endDate);
+      expect(days).toBe(4); // Jan 30, 31, Feb 1, 2
+    });
+
+    it('should return 0 for missing start date', () => {
+      const endDate = new Date('2024-01-01');
+      
+      const days = calculateTripDays(null, endDate);
+      expect(days).toBe(0);
+    });
+
+    it('should return 0 for missing end date', () => {
+      const startDate = new Date('2024-01-01');
+      
+      const days = calculateTripDays(startDate, null);
+      expect(days).toBe(0);
+    });
+
+    it('should return 0 for both dates missing', () => {
+      const days = calculateTripDays(null, null);
+      expect(days).toBe(0);
+    });
+
+    it('should handle string dates correctly', () => {
+      const startDate = new Date('2024-06-15');
+      const endDate = new Date('2024-06-20');
+      
+      const days = calculateTripDays(startDate, endDate);
+      expect(days).toBe(6);
+    });
+
+    it('should ensure minimum 1 day for edge cases', () => {
+      // Test with times that might cause issues
+      const startDate = new Date('2024-01-01T23:59:59');
+      const endDate = new Date('2024-01-02T00:00:01');
+      
+      const days = calculateTripDays(startDate, endDate);
+      expect(days).toBe(2);
     });
   });
 });

@@ -13,6 +13,7 @@ import {
   writeBatch
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
+import { calculateTripDays } from '../utils/tripConstants';
 
 // Collection names
 const ITINERARIES_COLLECTION = 'itineraries';
@@ -719,6 +720,78 @@ export const addMultipleDays = async (tripId, userId, startDay, endDay) => {
 
   } catch (error) {
     console.error('Error adding multiple days:', error);
+    throw error;
+  }
+};
+
+/**
+ * Initialize an itinerary for a newly created trip
+ * This function creates an itinerary with the appropriate number of days based on trip dates
+ */
+export const initializeItineraryForTrip = async (tripId, userId, startDate, endDate) => {
+  try {
+    console.log('Initializing itinerary for trip:', tripId);
+
+    // Validate inputs
+    if (!tripId) {
+      throw new Error('Trip ID is required');
+    }
+    if (!userId) {
+      throw new Error('User ID is required');
+    }
+    if (!startDate || !endDate) {
+      throw new Error('Start date and end date are required');
+    }
+
+    // Calculate the number of days for the trip
+    const numberOfDays = calculateTripDays(startDate, endDate);
+    
+    console.log(`Trip has ${numberOfDays} days, creating itinerary...`);
+
+    // Create or get the itinerary
+    const itinerary = await getOrCreateItinerary(tripId, userId);
+
+    // If itinerary already has days, don't reinitialize
+    if (itinerary.days && itinerary.days.length > 0) {
+      console.log('Itinerary already has days, skipping initialization');
+      return itinerary;
+    }
+
+    // Create days with proper date assignments
+    const newDays = [];
+    for (let i = 0; i < numberOfDays; i++) {
+      // Calculate the date for this day
+      const dayDate = new Date(startDate);
+      dayDate.setDate(dayDate.getDate() + i);
+      
+      const newDay = {
+        id: `day_${Date.now()}_${i}_${Math.random().toString(36).substr(2, 9)}`,
+        date: dayDate.toISOString().split('T')[0], // Store as YYYY-MM-DD format
+        weather: null,
+        activities: [],
+        notes: '',
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+      
+      newDays.push(newDay);
+    }
+
+    // Update the itinerary with the new days
+    await updateDoc(doc(db, ITINERARIES_COLLECTION, itinerary.id), {
+      days: newDays,
+      updatedAt: serverTimestamp()
+    });
+    
+    console.log(`Successfully initialized itinerary with ${numberOfDays} days`);
+    
+    return {
+      ...itinerary,
+      days: newDays
+    };
+
+  } catch (error) {
+    console.error('Error initializing itinerary for trip:', error);
     throw error;
   }
 };
