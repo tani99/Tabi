@@ -9,7 +9,11 @@ import {
   deleteDay, 
   getTripDays,
   addMultipleDays,
-  reorderDays
+  reorderDays,
+  addActivityToDay,
+  updateActivityInDay,
+  deleteActivityFromDay,
+  getDayActivities
 } from '../services/itinerary';
 
 const ItineraryContext = createContext();
@@ -254,6 +258,155 @@ export const ItineraryProvider = ({ children }) => {
     }
   }, [user?.uid]);
 
+  // Add activity to day
+  const addActivity = useCallback(async (tripId, dayIndex, activityData) => {
+    if (!user?.uid) {
+      throw new Error('User must be authenticated to add activities');
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Add activity to Firestore
+      const newActivity = await addActivityToDay(tripId, user.uid, dayIndex, activityData);
+      
+      // Optimistic update: Update local state immediately
+      setItinerary(prevItinerary => {
+        if (!prevItinerary || !prevItinerary.days) return prevItinerary;
+
+        const updatedDays = [...prevItinerary.days];
+        const currentDay = updatedDays[dayIndex];
+        
+        if (currentDay) {
+          // Ensure activities array exists
+          if (!currentDay.activities) {
+            currentDay.activities = [];
+          }
+          
+          // Add the new activity
+          currentDay.activities = [...currentDay.activities, newActivity];
+          currentDay.updatedAt = new Date().toISOString();
+        }
+
+        return {
+          ...prevItinerary,
+          days: updatedDays
+        };
+      });
+
+      return newActivity;
+    } catch (err) {
+      setError(err.message);
+      // Revert optimistic update on error by reloading the itinerary
+      try {
+        await getItinerary(tripId);
+      } catch (reloadError) {
+        console.error('Failed to reload itinerary after error:', reloadError);
+      }
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, [user?.uid, getItinerary]);
+
+  // Update activity in day
+  const updateActivity = useCallback(async (tripId, dayIndex, activityId, updateData) => {
+    if (!user?.uid) {
+      throw new Error('User must be authenticated to update activities');
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Update activity in Firestore
+      const updatedActivity = await updateActivityInDay(tripId, user.uid, dayIndex, activityId, updateData);
+      
+      // Update local state
+      setItinerary(prevItinerary => {
+        if (!prevItinerary || !prevItinerary.days) return prevItinerary;
+
+        const updatedDays = [...prevItinerary.days];
+        const currentDay = updatedDays[dayIndex];
+        
+        if (currentDay && currentDay.activities) {
+          const activityIndex = currentDay.activities.findIndex(activity => activity.id === activityId);
+          if (activityIndex !== -1) {
+            currentDay.activities[activityIndex] = updatedActivity;
+            currentDay.updatedAt = new Date().toISOString();
+          }
+        }
+
+        return {
+          ...prevItinerary,
+          days: updatedDays
+        };
+      });
+
+      return updatedActivity;
+    } catch (err) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, [user?.uid]);
+
+  // Delete activity from day
+  const deleteActivity = useCallback(async (tripId, dayIndex, activityId) => {
+    if (!user?.uid) {
+      throw new Error('User must be authenticated to delete activities');
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Delete activity from Firestore
+      await deleteActivityFromDay(tripId, user.uid, dayIndex, activityId);
+      
+      // Update local state
+      setItinerary(prevItinerary => {
+        if (!prevItinerary || !prevItinerary.days) return prevItinerary;
+
+        const updatedDays = [...prevItinerary.days];
+        const currentDay = updatedDays[dayIndex];
+        
+        if (currentDay && currentDay.activities) {
+          currentDay.activities = currentDay.activities.filter(activity => activity.id !== activityId);
+          currentDay.updatedAt = new Date().toISOString();
+        }
+
+        return {
+          ...prevItinerary,
+          days: updatedDays
+        };
+      });
+
+      return true;
+    } catch (err) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, [user?.uid]);
+
+  // Get activities for a day
+  const getActivities = useCallback(async (tripId, dayIndex) => {
+    if (!user?.uid) {
+      throw new Error('User must be authenticated to get activities');
+    }
+
+    try {
+      return await getDayActivities(tripId, user.uid, dayIndex);
+    } catch (err) {
+      setError(err.message);
+      throw err;
+    }
+  }, [user?.uid]);
+
   const value = {
     itinerary,
     loading,
@@ -265,7 +418,11 @@ export const ItineraryProvider = ({ children }) => {
     deleteDay: deleteDayData,
     getDays,
     addMultipleDays: addMultipleDaysData,
-    reorderDays: reorderDaysData
+    reorderDays: reorderDaysData,
+    addActivity,
+    updateActivity,
+    deleteActivity,
+    getActivities
   };
 
   return (

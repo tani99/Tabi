@@ -386,6 +386,269 @@ export const reorderDays = async (tripId, userId, newOrder) => {
 };
 
 /**
+ * Add an activity to a specific day in an itinerary
+ */
+export const addActivityToDay = async (tripId, userId, dayIndex, activityData) => {
+  try {
+    console.log('Adding activity to day', dayIndex, 'in trip:', tripId);
+
+    // Validate inputs
+    if (!tripId) {
+      throw new Error('Trip ID is required');
+    }
+    if (!userId) {
+      throw new Error('User ID is required');
+    }
+    if (typeof dayIndex !== 'number' || dayIndex < 0) {
+      throw new Error('Valid day index is required');
+    }
+    if (!activityData || typeof activityData !== 'object') {
+      throw new Error('Activity data is required');
+    }
+
+    // Validate required activity fields
+    if (!activityData.title || !activityData.title.trim()) {
+      throw new Error('Activity title is required');
+    }
+    if (!activityData.startTime || !activityData.endTime) {
+      throw new Error('Activity start and end times are required');
+    }
+
+    // Get itinerary
+    const itinerary = await getOrCreateItinerary(tripId, userId);
+
+    // Ensure days array exists
+    if (!itinerary.days) {
+      itinerary.days = [];
+    }
+
+    // Check if day index exists
+    if (dayIndex >= itinerary.days.length) {
+      throw new Error(`Day at index ${dayIndex} not found`);
+    }
+
+    // Create the activity object with proper ID and timestamps
+    const activity = {
+      id: `activity_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      title: activityData.title.trim(),
+      startTime: activityData.startTime instanceof Date ? activityData.startTime.toISOString() : activityData.startTime,
+      endTime: activityData.endTime instanceof Date ? activityData.endTime.toISOString() : activityData.endTime,
+      notes: activityData.notes ? activityData.notes.trim() : '',
+      location: activityData.location || null,
+      type: activityData.type || 'general',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    // Update the specific day's activities array
+    const updatedDays = [...itinerary.days];
+    const currentDay = updatedDays[dayIndex];
+    
+    // Ensure activities array exists
+    if (!currentDay.activities) {
+      currentDay.activities = [];
+    }
+
+    // Add the new activity to the day's activities
+    currentDay.activities = [...currentDay.activities, activity];
+    currentDay.updatedAt = new Date().toISOString();
+
+    // Update the itinerary document
+    await updateDoc(doc(db, ITINERARIES_COLLECTION, itinerary.id), {
+      days: updatedDays,
+      updatedAt: serverTimestamp()
+    });
+    
+    console.log('Activity added successfully with ID:', activity.id);
+    
+    return activity;
+
+  } catch (error) {
+    console.error('Error adding activity to day:', error);
+    throw error;
+  }
+};
+
+/**
+ * Update an activity in a specific day
+ */
+export const updateActivityInDay = async (tripId, userId, dayIndex, activityId, updateData) => {
+  try {
+    console.log('Updating activity', activityId, 'in day', dayIndex, 'for trip:', tripId);
+
+    // Validate inputs
+    if (!tripId) {
+      throw new Error('Trip ID is required');
+    }
+    if (!userId) {
+      throw new Error('User ID is required');
+    }
+    if (typeof dayIndex !== 'number' || dayIndex < 0) {
+      throw new Error('Valid day index is required');
+    }
+    if (!activityId) {
+      throw new Error('Activity ID is required');
+    }
+    if (!updateData || Object.keys(updateData).length === 0) {
+      throw new Error('Update data is required');
+    }
+
+    // Get itinerary
+    const itinerary = await getOrCreateItinerary(tripId, userId);
+
+    // Ensure days array exists
+    if (!itinerary.days) {
+      throw new Error('No days found in itinerary');
+    }
+
+    // Check if day index exists
+    if (dayIndex >= itinerary.days.length) {
+      throw new Error(`Day at index ${dayIndex} not found`);
+    }
+
+    // Update the specific day's activity
+    const updatedDays = [...itinerary.days];
+    const currentDay = updatedDays[dayIndex];
+    
+    // Ensure activities array exists
+    if (!currentDay.activities) {
+      throw new Error('No activities found for this day');
+    }
+
+    // Find and update the activity
+    const activityIndex = currentDay.activities.findIndex(activity => activity.id === activityId);
+    if (activityIndex === -1) {
+      throw new Error(`Activity with ID ${activityId} not found`);
+    }
+
+    // Update the activity
+    currentDay.activities[activityIndex] = {
+      ...currentDay.activities[activityIndex],
+      ...updateData,
+      updatedAt: new Date().toISOString()
+    };
+    currentDay.updatedAt = new Date().toISOString();
+
+    // Update the itinerary document
+    await updateDoc(doc(db, ITINERARIES_COLLECTION, itinerary.id), {
+      days: updatedDays,
+      updatedAt: serverTimestamp()
+    });
+    
+    console.log('Activity updated successfully');
+    
+    return currentDay.activities[activityIndex];
+
+  } catch (error) {
+    console.error('Error updating activity:', error);
+    throw error;
+  }
+};
+
+/**
+ * Delete an activity from a specific day
+ */
+export const deleteActivityFromDay = async (tripId, userId, dayIndex, activityId) => {
+  try {
+    console.log('Deleting activity', activityId, 'from day', dayIndex, 'in trip:', tripId);
+
+    // Validate inputs
+    if (!tripId) {
+      throw new Error('Trip ID is required');
+    }
+    if (!userId) {
+      throw new Error('User ID is required');
+    }
+    if (typeof dayIndex !== 'number' || dayIndex < 0) {
+      throw new Error('Valid day index is required');
+    }
+    if (!activityId) {
+      throw new Error('Activity ID is required');
+    }
+
+    // Get itinerary
+    const itinerary = await getOrCreateItinerary(tripId, userId);
+
+    // Ensure days array exists
+    if (!itinerary.days) {
+      throw new Error('No days found in itinerary');
+    }
+
+    // Check if day index exists
+    if (dayIndex >= itinerary.days.length) {
+      throw new Error(`Day at index ${dayIndex} not found`);
+    }
+
+    // Update the specific day's activities
+    const updatedDays = [...itinerary.days];
+    const currentDay = updatedDays[dayIndex];
+    
+    // Ensure activities array exists
+    if (!currentDay.activities) {
+      throw new Error('No activities found for this day');
+    }
+
+    // Remove the activity
+    const initialLength = currentDay.activities.length;
+    currentDay.activities = currentDay.activities.filter(activity => activity.id !== activityId);
+    
+    if (currentDay.activities.length === initialLength) {
+      throw new Error(`Activity with ID ${activityId} not found`);
+    }
+
+    currentDay.updatedAt = new Date().toISOString();
+
+    // Update the itinerary document
+    await updateDoc(doc(db, ITINERARIES_COLLECTION, itinerary.id), {
+      days: updatedDays,
+      updatedAt: serverTimestamp()
+    });
+    
+    console.log('Activity deleted successfully');
+    
+    return true;
+
+  } catch (error) {
+    console.error('Error deleting activity:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get activities for a specific day
+ */
+export const getDayActivities = async (tripId, userId, dayIndex) => {
+  try {
+    console.log('Getting activities for day', dayIndex, 'in trip:', tripId);
+
+    // Validate inputs
+    if (!tripId) {
+      throw new Error('Trip ID is required');
+    }
+    if (!userId) {
+      throw new Error('User ID is required');
+    }
+    if (typeof dayIndex !== 'number' || dayIndex < 0) {
+      throw new Error('Valid day index is required');
+    }
+
+    // Get the specific day
+    const day = await getDay(tripId, userId, dayIndex);
+    
+    if (!day) {
+      return [];
+    }
+
+    // Return activities array, ensuring it exists
+    return day.activities || [];
+
+  } catch (error) {
+    console.error('Error getting day activities:', error);
+    throw error;
+  }
+};
+
+/**
  * Add multiple days to an itinerary (for initial setup)
  */
 export const addMultipleDays = async (tripId, userId, startDay, endDay) => {

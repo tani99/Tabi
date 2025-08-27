@@ -7,10 +7,10 @@ import {
   TouchableOpacity, 
   ScrollView,
   Platform,
-  Alert
+  Alert,
+  FlatList
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import CustomInput from './CustomInput';
 import CustomButton from './CustomButton';
 import { colors } from '../theme/colors';
@@ -29,14 +29,32 @@ const AddActivityModal = ({
     notes: ''
   });
   const [errors, setErrors] = useState({});
-  const [showStartTimePicker, setShowStartTimePicker] = useState(false);
-  const [showEndTimePicker, setShowEndTimePicker] = useState(false);
+  const [showStartTimeDropdown, setShowStartTimeDropdown] = useState(false);
+  const [showEndTimeDropdown, setShowEndTimeDropdown] = useState(false);
 
   // Initialize form with default times when modal opens
   useEffect(() => {
     if (visible) {
       const now = new Date();
-      const defaultStartTime = lastActivityEndTime || new Date(now.getFullYear(), now.getMonth(), now.getDate(), 9, 0, 0);
+      
+      // Handle lastActivityEndTime properly - it might be a string or Date object
+      let defaultStartTime;
+      if (lastActivityEndTime) {
+        // If lastActivityEndTime is provided, use it as the start time
+        defaultStartTime = lastActivityEndTime instanceof Date 
+          ? new Date(lastActivityEndTime) 
+          : new Date(lastActivityEndTime);
+        
+        // Validate the date
+        if (isNaN(defaultStartTime.getTime())) {
+          // If invalid, fall back to 9 AM today
+          defaultStartTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 9, 0, 0);
+        }
+      } else {
+        // Default to 9 AM today
+        defaultStartTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 9, 0, 0);
+      }
+      
       const defaultEndTime = new Date(defaultStartTime.getTime() + 60 * 60 * 1000); // 1 hour later
       
       setFormData({
@@ -104,26 +122,40 @@ const AddActivityModal = ({
     onSave(activity);
   };
 
-  const handleStartTimeChange = (event, selectedTime) => {
-    setShowStartTimePicker(false);
-    if (selectedTime) {
-      updateFormData('startTime', selectedTime);
-      // Update end time if it's now before start time
-      if (formData.endTime <= selectedTime) {
-        const newEndTime = new Date(selectedTime.getTime() + 60 * 60 * 1000); // 1 hour later
-        updateFormData('endTime', newEndTime);
-      }
+  const handleStartTimeChange = (selectedTime) => {
+    setShowStartTimeDropdown(false);
+    
+    // Create a new date with the current form start time's date but selected time
+    const currentDate = formData.startTime;
+    const newStartTime = new Date(currentDate);
+    newStartTime.setHours(selectedTime.getHours(), selectedTime.getMinutes(), 0, 0);
+    
+    updateFormData('startTime', newStartTime);
+    
+    // Update end time if it's now before start time
+    if (formData.endTime <= newStartTime) {
+      const newEndTime = new Date(newStartTime.getTime() + 60 * 60 * 1000); // 1 hour later
+      updateFormData('endTime', newEndTime);
     }
   };
 
-  const handleEndTimeChange = (event, selectedTime) => {
-    setShowEndTimePicker(false);
-    if (selectedTime) {
-      updateFormData('endTime', selectedTime);
-    }
+  const handleEndTimeChange = (selectedTime) => {
+    setShowEndTimeDropdown(false);
+    
+    // Create a new date with the current form end time's date but selected time
+    const currentDate = formData.endTime;
+    const newEndTime = new Date(currentDate);
+    newEndTime.setHours(selectedTime.getHours(), selectedTime.getMinutes(), 0, 0);
+    
+    updateFormData('endTime', newEndTime);
   };
 
   const formatTime = (date) => {
+    // Check if date is valid
+    if (!date || isNaN(date.getTime())) {
+      return 'Invalid Date';
+    }
+    
     return date.toLocaleTimeString('en-US', { 
       hour: 'numeric', 
       minute: '2-digit',
@@ -135,13 +167,33 @@ const AddActivityModal = ({
     const options = [];
     for (let hour = 0; hour < 24; hour++) {
       for (let minute = 0; minute < 60; minute += 30) {
+        // Create a base date for today and set the time
         const time = new Date();
         time.setHours(hour, minute, 0, 0);
-        options.push(time);
+        
+        options.push({
+          time: time,
+          display: time.toLocaleTimeString('en-US', { 
+            hour: 'numeric', 
+            minute: '2-digit',
+            hour12: true 
+          })
+        });
       }
     }
     return options;
   };
+
+  const timeOptions = getTimeOptions();
+
+  const renderTimeOption = ({ item }) => (
+    <TouchableOpacity
+      style={styles.timeOption}
+      onPress={() => showStartTimeDropdown ? handleStartTimeChange(item.time) : handleEndTimeChange(item.time)}
+    >
+      <Text style={styles.timeOptionText}>{item.display}</Text>
+    </TouchableOpacity>
+  );
 
   return (
     <Modal
@@ -177,7 +229,7 @@ const AddActivityModal = ({
               <Text style={styles.timeLabel}>Start Time *</Text>
               <TouchableOpacity
                 style={[styles.timeButton, errors.startTime && styles.timeButtonError]}
-                onPress={() => setShowStartTimePicker(true)}
+                onPress={() => setShowStartTimeDropdown(true)}
               >
                 <Ionicons name="time-outline" size={20} color={colors.text.secondary} />
                 <Text style={styles.timeButtonText}>{formatTime(formData.startTime)}</Text>
@@ -191,7 +243,7 @@ const AddActivityModal = ({
               <Text style={styles.timeLabel}>End Time *</Text>
               <TouchableOpacity
                 style={[styles.timeButton, errors.endTime && styles.timeButtonError]}
-                onPress={() => setShowEndTimePicker(true)}
+                onPress={() => setShowEndTimeDropdown(true)}
               >
                 <Ionicons name="time-outline" size={20} color={colors.text.secondary} />
                 <Text style={styles.timeButtonText}>{formatTime(formData.endTime)}</Text>
@@ -235,25 +287,50 @@ const AddActivityModal = ({
         </View>
       </View>
 
-      {/* Time Pickers */}
-      {showStartTimePicker && (
-        <DateTimePicker
-          value={formData.startTime}
-          mode="time"
-          is24Hour={false}
-          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-          onChange={handleStartTimeChange}
-        />
-      )}
-
-      {showEndTimePicker && (
-        <DateTimePicker
-          value={formData.endTime}
-          mode="time"
-          is24Hour={false}
-          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-          onChange={handleEndTimeChange}
-        />
+      {/* Time Dropdown Modals */}
+      {(showStartTimeDropdown || showEndTimeDropdown) && (
+        <Modal
+          visible={showStartTimeDropdown || showEndTimeDropdown}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => {
+            setShowStartTimeDropdown(false);
+            setShowEndTimeDropdown(false);
+          }}
+        >
+          <TouchableOpacity 
+            style={styles.timeDropdownOverlay}
+            activeOpacity={1}
+            onPress={() => {
+              setShowStartTimeDropdown(false);
+              setShowEndTimeDropdown(false);
+            }}
+          >
+            <TouchableOpacity style={styles.timeDropdownContainer} activeOpacity={1}>
+              <View style={styles.timeDropdownHeader}>
+                <Text style={styles.timeDropdownTitle}>
+                  {showStartTimeDropdown ? 'Select Start Time' : 'Select End Time'}
+                </Text>
+                <TouchableOpacity
+                  onPress={() => {
+                    setShowStartTimeDropdown(false);
+                    setShowEndTimeDropdown(false);
+                  }}
+                >
+                  <Ionicons name="close" size={24} color={colors.text.secondary} />
+                </TouchableOpacity>
+              </View>
+              <FlatList
+                data={timeOptions}
+                renderItem={renderTimeOption}
+                keyExtractor={(item, index) => index.toString()}
+                style={styles.timeDropdownList}
+                showsVerticalScrollIndicator={true}
+                ItemSeparatorComponent={() => <View style={styles.timeOptionSeparator} />}
+              />
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </Modal>
       )}
     </Modal>
   );
@@ -355,6 +432,61 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     flex: 1,
+  },
+  // Time dropdown styles
+  timeDropdownOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  timeDropdownContainer: {
+    backgroundColor: colors.background.primary,
+    borderRadius: 16,
+    width: '100%',
+    maxWidth: 300,
+    maxHeight: '70%',
+    shadowColor: colors.shadow.primary,
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  timeDropdownHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border.primary,
+  },
+  timeDropdownTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text.primary,
+  },
+  timeDropdownList: {
+    maxHeight: 300,
+  },
+  timeOption: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: colors.background.primary,
+  },
+  timeOptionText: {
+    fontSize: 16,
+    color: colors.text.primary,
+    textAlign: 'center',
+  },
+  timeOptionSeparator: {
+    height: 1,
+    backgroundColor: colors.border.primary,
+    marginHorizontal: 20,
   },
 });
 

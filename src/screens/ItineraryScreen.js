@@ -27,7 +27,8 @@ const ItineraryScreen = ({ navigation, route }) => {
     loading: itineraryLoading, 
     addDay, 
     getItinerary,
-    deleteDay 
+    deleteDay,
+    addActivity 
   } = useItinerary();
   const [selectedDay, setSelectedDay] = useState(1);
   
@@ -124,13 +125,28 @@ const ItineraryScreen = ({ navigation, route }) => {
     try {
       setAddingActivity(true);
       
-      // TODO: Implement activity saving logic
-      // This will be connected to the itinerary service when it's implemented
+      // Ensure we have the necessary data
+      if (!tripId) {
+        throw new Error('Trip ID is required');
+      }
+      if (!selectedDay || selectedDay < 1) {
+        throw new Error('Valid day selection is required');
+      }
+      if (!itinerary?.days || itinerary.days.length < selectedDay) {
+        throw new Error('Selected day does not exist in itinerary');
+      }
+      
+      // Convert selectedDay to zero-based index
+      const dayIndex = selectedDay - 1;
+      
       console.log('Saving activity:', activity);
-      console.log('For day:', selectedDay);
+      console.log('For day index:', dayIndex, '(day', selectedDay, ')');
       console.log('Trip ID:', tripId);
       
-      // For now, just show a success message
+      // Save activity to Firestore via the itinerary service
+      await addActivity(tripId, dayIndex, activity);
+      
+      // Show success message
       Alert.alert('Success', 'Activity added successfully!');
       
       // Close the modal
@@ -138,16 +154,54 @@ const ItineraryScreen = ({ navigation, route }) => {
       
     } catch (error) {
       console.error('Error saving activity:', error);
-      Alert.alert('Error', 'Failed to save activity. Please try again.');
+      
+      // Show specific error message based on error type
+      let errorMessage = 'Failed to save activity. Please try again.';
+      if (error.message.includes('authenticated')) {
+        errorMessage = 'Please log in to save activities.';
+      } else if (error.message.includes('Day at index')) {
+        errorMessage = 'Please add a day to your itinerary first.';
+      } else if (error.message.includes('required')) {
+        errorMessage = error.message;
+      }
+      
+      Alert.alert('Error', errorMessage);
     } finally {
       setAddingActivity(false);
     }
   };
 
   const getLastActivityEndTime = () => {
-    // TODO: Get the end time of the last activity for the selected day
-    // This will be implemented when the itinerary service is connected
-    return null;
+    try {
+      // Get the current day's activities
+      if (!itinerary?.days || !selectedDay || selectedDay < 1) {
+        return null;
+      }
+      
+      const dayIndex = selectedDay - 1;
+      const currentDay = itinerary.days[dayIndex];
+      
+      if (!currentDay?.activities || currentDay.activities.length === 0) {
+        return null;
+      }
+      
+      // Sort activities by end time and get the last one
+      const sortedActivities = [...currentDay.activities].sort((a, b) => {
+        const aEndTime = new Date(a.endTime);
+        const bEndTime = new Date(b.endTime);
+        return aEndTime.getTime() - bEndTime.getTime();
+      });
+      
+      const lastActivity = sortedActivities[sortedActivities.length - 1];
+      if (lastActivity?.endTime) {
+        return new Date(lastActivity.endTime);
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error getting last activity end time:', error);
+      return null;
+    }
   };
 
   // Render loading state
