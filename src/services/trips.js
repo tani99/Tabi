@@ -9,6 +9,8 @@ import {
   query, 
   where, 
   orderBy,
+  limit,
+  startAfter,
   serverTimestamp 
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
@@ -17,6 +19,10 @@ import { initializeItineraryForTrip } from './itinerary';
 
 // Collection name for trips
 const TRIPS_COLLECTION = 'trips';
+
+// Pagination constants
+const DEFAULT_PAGE_SIZE = 10;
+const MAX_PAGE_SIZE = 50;
 
 /**
  * Validate trip data against defined rules
@@ -185,7 +191,7 @@ export const getTrip = async (tripId, userId) => {
 };
 
 /**
- * Get all trips for a user
+ * Get all trips for a user (backwards compatibility)
  */
 export const getUserTrips = async (userId) => {
   try {
@@ -212,6 +218,70 @@ export const getUserTrips = async (userId) => {
 
   } catch (error) {
     console.error('Error getting user trips:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get trips for a user with pagination support
+ */
+export const getUserTripsPaginated = async (userId, options = {}) => {
+  try {
+    const {
+      pageSize = DEFAULT_PAGE_SIZE,
+      lastTrip = null, // Last trip document from previous page
+      orderField = 'createdAt',
+      orderDirection = 'desc'
+    } = options;
+
+    console.log(`Getting paginated trips for user: ${userId}, pageSize: ${pageSize}`);
+
+    // Validate user ID
+    if (!userId) {
+      throw new Error('User ID is required');
+    }
+
+    // Validate page size
+    const validPageSize = Math.min(Math.max(1, pageSize), MAX_PAGE_SIZE);
+
+    // Build base query
+    let tripsQuery = query(
+      collection(db, TRIPS_COLLECTION),
+      where('userId', '==', userId),
+      orderBy(orderField, orderDirection),
+      limit(validPageSize)
+    );
+
+    // Add cursor for pagination if provided
+    if (lastTrip) {
+      tripsQuery = query(
+        collection(db, TRIPS_COLLECTION),
+        where('userId', '==', userId),
+        orderBy(orderField, orderDirection),
+        startAfter(lastTrip),
+        limit(validPageSize)
+      );
+    }
+
+    const querySnapshot = await getDocs(tripsQuery);
+    
+    const trips = querySnapshot.docs.map(doc => convertTimestamps(doc));
+    
+    // Get the last document for next page cursor
+    const lastDoc = querySnapshot.docs[querySnapshot.docs.length - 1] || null;
+    
+    console.log(`Retrieved ${trips.length} trips for user (paginated)`);
+    
+    return {
+      trips,
+      lastDocument: lastDoc,
+      hasMore: trips.length === validPageSize,
+      pageSize: validPageSize,
+      totalRetrieved: trips.length
+    };
+
+  } catch (error) {
+    console.error('Error getting paginated user trips:', error);
     throw error;
   }
 };
@@ -331,6 +401,82 @@ export const searchTrips = async (userId, searchTerm) => {
 
   } catch (error) {
     console.error('Error searching trips:', error);
+    throw error;
+  }
+};
+
+/**
+ * Search trips with pagination support
+ */
+export const searchTripsPaginated = async (userId, searchTerm, options = {}) => {
+  try {
+    const {
+      pageSize = DEFAULT_PAGE_SIZE,
+      lastTrip = null,
+      orderField = 'createdAt',
+      orderDirection = 'desc'
+    } = options;
+
+    console.log('Searching trips (paginated) for term:', searchTerm, 'for user:', userId);
+
+    // Validate inputs
+    if (!userId) {
+      throw new Error('User ID is required');
+    }
+    if (!searchTerm || searchTerm.trim() === '') {
+      throw new Error('Search term is required');
+    }
+
+    // Since Firestore doesn't support full-text search, we need to paginate and filter
+    // This is not ideal for large datasets, but works for moderate sizes
+    
+    const validPageSize = Math.min(Math.max(1, pageSize), MAX_PAGE_SIZE);
+    const searchLower = searchTerm.toLowerCase();
+    
+    let allResults = [];
+    let currentLastDoc = lastTrip;
+    let hasMore = true;
+    
+    // We may need to fetch multiple pages to get enough matching results
+    const maxPagesToFetch = 5; // Prevent infinite loops
+    let pagesFetched = 0;
+    
+    while (allResults.length < validPageSize && hasMore && pagesFetched < maxPagesToFetch) {
+      const paginatedResult = await getUserTripsPaginated(userId, {
+        pageSize: validPageSize * 2, // Fetch more to account for filtering
+        lastTrip: currentLastDoc,
+        orderField,
+        orderDirection
+      });
+      
+      // Filter the results
+      const filteredTrips = paginatedResult.trips.filter(trip => 
+        trip.name.toLowerCase().includes(searchLower) ||
+        trip.location.toLowerCase().includes(searchLower) ||
+        (trip.description && trip.description.toLowerCase().includes(searchLower))
+      );
+      
+      allResults = [...allResults, ...filteredTrips];
+      currentLastDoc = paginatedResult.lastDocument;
+      hasMore = paginatedResult.hasMore;
+      pagesFetched++;
+    }
+    
+    // Limit results to requested page size
+    const finalResults = allResults.slice(0, validPageSize);
+    
+    console.log(`Found ${finalResults.length} trips matching "${searchTerm}" (paginated)`);
+    
+    return {
+      trips: finalResults,
+      lastDocument: currentLastDoc,
+      hasMore: allResults.length >= validPageSize && hasMore,
+      pageSize: validPageSize,
+      totalRetrieved: finalResults.length
+    };
+
+  } catch (error) {
+    console.error('Error searching trips (paginated):', error);
     throw error;
   }
 };

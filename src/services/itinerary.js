@@ -9,6 +9,8 @@ import {
   query, 
   where, 
   orderBy,
+  limit,
+  startAfter,
   serverTimestamp,
   writeBatch
 } from 'firebase/firestore';
@@ -16,6 +18,10 @@ import { db } from '../config/firebase';
 
 // Collection names
 const ITINERARIES_COLLECTION = 'itineraries';
+
+// Pagination constants for activities
+const DEFAULT_ACTIVITY_PAGE_SIZE = 20;
+const MAX_ACTIVITY_PAGE_SIZE = 100;
 
 /**
  * Convert Firestore timestamp to Date object
@@ -672,6 +678,80 @@ export const getDayActivities = async (tripId, userId, dayIndex) => {
 };
 
 /**
+ * Initialize itinerary for a trip with proper date range
+ * This is called automatically when a trip is created
+ */
+export const initializeItineraryForTrip = async (tripId, userId, startDate, endDate) => {
+  try {
+    console.log('Initializing itinerary for trip:', tripId);
+
+    // Validate inputs
+    if (!tripId) {
+      throw new Error('Trip ID is required');
+    }
+    if (!userId) {
+      throw new Error('User ID is required');
+    }
+    if (!startDate || !endDate) {
+      throw new Error('Start and end dates are required');
+    }
+
+    // Convert dates if needed
+    const start = startDate instanceof Date ? startDate : new Date(startDate);
+    const end = endDate instanceof Date ? endDate : new Date(endDate);
+
+    // Calculate number of days
+    const timeDiff = end.getTime() - start.getTime();
+    const dayCount = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1; // Include both start and end day
+
+    // Create or get existing itinerary
+    const itinerary = await getOrCreateItinerary(tripId, userId);
+
+    // If itinerary already has days, don't reinitialize
+    if (itinerary.days && itinerary.days.length > 0) {
+      console.log('Itinerary already has days, skipping initialization');
+      return itinerary;
+    }
+
+    // Create days for the trip duration
+    const days = [];
+    for (let i = 0; i < dayCount; i++) {
+      const dayDate = new Date(start);
+      dayDate.setDate(start.getDate() + i);
+
+      const day = {
+        id: `day_${Date.now()}_${i}_${Math.random().toString(36).substr(2, 9)}`,
+        date: dayDate,
+        weather: null,
+        activities: [],
+        notes: '',
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+
+      days.push(day);
+    }
+
+    // Update the itinerary with the new days
+    await updateDoc(doc(db, ITINERARIES_COLLECTION, itinerary.id), {
+      days: days,
+      updatedAt: serverTimestamp()
+    });
+
+    console.log(`Initialized itinerary with ${dayCount} days`);
+    
+    return {
+      ...itinerary,
+      days
+    };
+
+  } catch (error) {
+    console.error('Error initializing itinerary for trip:', error);
+    throw error;
+  }
+};
+
+/**
  * Add multiple days to an itinerary (for initial setup)
  */
 export const addMultipleDays = async (tripId, userId, startDay, endDay) => {
@@ -742,6 +822,193 @@ export const addMultipleDays = async (tripId, userId, startDay, endDay) => {
 
   } catch (error) {
     console.error('Error adding multiple days:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get activities from a day with pagination support
+ * This helps when a single day has many activities
+ */
+export const getDayActivitiesPaginated = async (tripId, userId, dayIndex, options = {}) => {
+  try {
+    const {
+      pageSize = DEFAULT_ACTIVITY_PAGE_SIZE,
+      startIndex = 0,
+      orderBy: orderField = 'startTime'
+    } = options;
+
+    console.log(`Getting paginated activities for day ${dayIndex} in trip:`, tripId);
+
+    // Validate inputs
+    if (!tripId) {
+      throw new Error('Trip ID is required');
+    }
+    if (!userId) {
+      throw new Error('User ID is required');
+    }
+    if (typeof dayIndex !== 'number' || dayIndex < 0) {
+      throw new Error('Valid day index is required');
+    }
+
+    // Validate page size
+    const validPageSize = Math.min(Math.max(1, pageSize), MAX_ACTIVITY_PAGE_SIZE);
+    const validStartIndex = Math.max(0, startIndex);
+
+    // Get the specific day
+    const day = await getDay(tripId, userId, dayIndex);
+    
+    if (!day || !day.activities) {
+      return {
+        activities: [],
+        hasMore: false,
+        pageSize: validPageSize,
+        totalActivities: 0,
+        nextStartIndex: validStartIndex
+      };
+    }
+
+    // Sort activities if needed
+    let sortedActivities = [...day.activities];
+    if (orderField === 'startTime') {
+      sortedActivities.sort((a, b) => {
+        const timeA = a.startTime instanceof Date ? a.startTime : new Date(a.startTime);
+        const timeB = b.startTime instanceof Date ? b.startTime : new Date(b.startTime);
+        return timeA - timeB;
+      });
+    } else if (orderField === 'createdAt') {
+      sortedActivities.sort((a, b) => {
+        const timeA = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt);
+        const timeB = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt);
+        return timeB - timeA; // Newest first
+      });
+    }
+
+    // Paginate activities
+    const endIndex = validStartIndex + validPageSize;
+    const paginatedActivities = sortedActivities.slice(validStartIndex, endIndex);
+    const hasMore = endIndex < sortedActivities.length;
+    const nextStartIndex = hasMore ? endIndex : validStartIndex;
+
+    console.log(`Retrieved ${paginatedActivities.length} activities (${validStartIndex}-${endIndex}) of ${sortedActivities.length} total`);
+
+    return {
+      activities: paginatedActivities,
+      hasMore,
+      pageSize: validPageSize,
+      totalActivities: sortedActivities.length,
+      nextStartIndex,
+      currentStartIndex: validStartIndex
+    };
+
+  } catch (error) {
+    console.error('Error getting paginated day activities:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get all activities across all days for a trip with pagination
+ * Useful for activity search and bulk operations
+ */
+export const getAllTripActivitiesPaginated = async (tripId, userId, options = {}) => {
+  try {
+    const {
+      pageSize = DEFAULT_ACTIVITY_PAGE_SIZE,
+      startIndex = 0,
+      orderBy: orderField = 'startTime',
+      filterByDate = null, // Filter activities by specific date
+      searchTerm = null // Search in activity titles and notes
+    } = options;
+
+    console.log(`Getting all paginated activities for trip:`, tripId);
+
+    // Validate inputs
+    if (!tripId) {
+      throw new Error('Trip ID is required');
+    }
+    if (!userId) {
+      throw new Error('User ID is required');
+    }
+
+    // Validate page size
+    const validPageSize = Math.min(Math.max(1, pageSize), MAX_ACTIVITY_PAGE_SIZE);
+    const validStartIndex = Math.max(0, startIndex);
+
+    // Get all days for the trip
+    const days = await getTripDays(tripId, userId);
+    
+    // Flatten all activities from all days
+    let allActivities = [];
+    days.forEach((day, dayIndex) => {
+      if (day.activities && Array.isArray(day.activities)) {
+        const activitiesWithDayInfo = day.activities.map(activity => ({
+          ...activity,
+          dayIndex,
+          dayDate: day.date
+        }));
+        allActivities = [...allActivities, ...activitiesWithDayInfo];
+      }
+    });
+
+    // Apply filters
+    let filteredActivities = allActivities;
+
+    // Filter by date if specified
+    if (filterByDate) {
+      const filterDate = filterByDate instanceof Date ? filterByDate : new Date(filterByDate);
+      filteredActivities = filteredActivities.filter(activity => {
+        if (!activity.dayDate) return false;
+        const activityDate = activity.dayDate instanceof Date ? activity.dayDate : new Date(activity.dayDate);
+        return activityDate.toDateString() === filterDate.toDateString();
+      });
+    }
+
+    // Filter by search term if specified
+    if (searchTerm && searchTerm.trim()) {
+      const searchLower = searchTerm.toLowerCase();
+      filteredActivities = filteredActivities.filter(activity => 
+        (activity.title && activity.title.toLowerCase().includes(searchLower)) ||
+        (activity.notes && activity.notes.toLowerCase().includes(searchLower)) ||
+        (activity.location && activity.location.toLowerCase().includes(searchLower))
+      );
+    }
+
+    // Sort activities
+    if (orderField === 'startTime') {
+      filteredActivities.sort((a, b) => {
+        const timeA = a.startTime instanceof Date ? a.startTime : new Date(a.startTime);
+        const timeB = b.startTime instanceof Date ? b.startTime : new Date(b.startTime);
+        return timeA - timeB;
+      });
+    } else if (orderField === 'createdAt') {
+      filteredActivities.sort((a, b) => {
+        const timeA = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt);
+        const timeB = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt);
+        return timeB - timeA; // Newest first
+      });
+    }
+
+    // Paginate
+    const endIndex = validStartIndex + validPageSize;
+    const paginatedActivities = filteredActivities.slice(validStartIndex, endIndex);
+    const hasMore = endIndex < filteredActivities.length;
+    const nextStartIndex = hasMore ? endIndex : validStartIndex;
+
+    console.log(`Retrieved ${paginatedActivities.length} activities (${validStartIndex}-${endIndex}) of ${filteredActivities.length} filtered, ${allActivities.length} total`);
+
+    return {
+      activities: paginatedActivities,
+      hasMore,
+      pageSize: validPageSize,
+      totalActivities: filteredActivities.length,
+      totalUnfilteredActivities: allActivities.length,
+      nextStartIndex,
+      currentStartIndex: validStartIndex
+    };
+
+  } catch (error) {
+    console.error('Error getting all paginated trip activities:', error);
     throw error;
   }
 };
