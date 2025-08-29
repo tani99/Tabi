@@ -5,7 +5,6 @@ import ScreenLayout from '../components/layout/ScreenLayout';
 import ScreenHeader from '../components/layout/ScreenHeader';
 import CustomButton from '../components/CustomButton';
 import LoadingIndicator from '../components/ui/LoadingIndicator';
-
 import { getUserTrips } from '../services/trips';
 import { useAuth } from '../context/AuthContext';
 import { colors } from '../theme/colors';
