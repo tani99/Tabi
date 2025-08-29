@@ -6,6 +6,7 @@ import ScreenLayout from '../components/layout/ScreenLayout';
 import ScreenHeader from '../components/layout/ScreenHeader';
 import CustomInput from '../components/CustomInput';
 import CustomButton from '../components/CustomButton';
+import QuickPlanButton from '../components/trip-planning/QuickPlanButton';
 import { createTrip } from '../services/trips';
 import { useAuth } from '../context/AuthContext';
 import { colors } from '../theme/colors';
@@ -62,6 +63,16 @@ const CreateTripScreen = ({ navigation }) => {
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  const handleAIPlanningPress = () => {
+    // TODO: Navigate to AI planning modal
+    // For now, just show an alert to indicate functionality
+    Alert.alert(
+      'AI Trip Planning',
+      'AI trip planning feature will open here. This will be implemented in the next steps.',
+      [{ text: 'OK' }]
+    );
   };
 
   const handleCreateTrip = async () => {
@@ -151,7 +162,26 @@ const CreateTripScreen = ({ navigation }) => {
         contentContainerStyle={styles.scrollContent}
       >
         <View style={styles.formContainer}>
-          <Text style={styles.sectionTitle}>Trip Details</Text>
+          {/* AI Trip Planning Section */}
+          <View style={styles.aiPlanningSection}>
+            <Text style={styles.sectionTitle}>Quick Planning</Text>
+            <QuickPlanButton
+              onPress={handleAIPlanningPress}
+              loading={false}
+              disabled={false}
+              testID="ai-planning-button"
+            />
+          </View>
+
+          {/* Manual Creation Section */}
+          <View style={styles.manualSection}>
+            <View style={styles.dividerContainer}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>or create manually</Text>
+              <View style={styles.dividerLine} />
+            </View>
+            
+            <Text style={styles.sectionTitle}>Trip Details</Text>
           
           <CustomInput
             label="Trip Name *"
@@ -236,6 +266,7 @@ const CreateTripScreen = ({ navigation }) => {
                 </Text>
               </View>
             </View>
+          </View>
           </View>
         </View>
       </ScrollView>
@@ -348,6 +379,29 @@ const styles = StyleSheet.create({
   formContainer: {
     paddingHorizontal: 20,
     paddingTop: 20,
+  },
+  aiPlanningSection: {
+    marginBottom: 24,
+  },
+  manualSection: {
+    flex: 1,
+  },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 24,
+    gap: 16,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: colors.border.primary,
+  },
+  dividerText: {
+    fontSize: 14,
+    color: colors.text.secondary,
+    fontWeight: '500',
+    paddingHorizontal: 8,
   },
   sectionTitle: {
     fontSize: 18,
