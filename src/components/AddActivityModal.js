@@ -77,7 +77,7 @@ const AddActivityModal = ({
       }
       setErrors({});
     }
-  }, [visible, lastActivityEndTime, editingActivity]);
+  }, [visible, editingActivity]);
 
   const updateFormData = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
