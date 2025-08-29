@@ -25,7 +25,10 @@ const AITripPlanningModal = ({
   onGeneratePlan,
   loading = false,
   loadingState = 'idle',
-  onCancelRequest
+  onCancelRequest,
+  tripData = null,
+  itineraryData = null,
+  hasData = false
 }) => {
   const [formData, setFormData] = useState({
     destination: '',
@@ -159,6 +162,13 @@ const AITripPlanningModal = ({
     return style ? style.label : 'Balanced';
   };
 
+  const formatDate = (date) => {
+    if (!date) return '';
+    if (typeof date === 'string') return date;
+    if (date instanceof Date) return date.toISOString().split('T')[0];
+    return date.toString();
+  };
+
   const renderTravelStyleOption = (option) => (
     <TouchableOpacity
       key={option.value}
@@ -216,6 +226,46 @@ const AITripPlanningModal = ({
                 showTimeEstimate={true}
               />
             </View>
+          ) : hasData ? (
+            /* AI Generated Data Preview */
+            <ScrollView style={styles.formContainer} showsVerticalScrollIndicator={false}>
+              <View style={styles.previewContainer}>
+                <Text style={styles.previewTitle}>🎉 Trip Generated Successfully!</Text>
+                
+                <View style={styles.tripPreview}>
+                  <Text style={styles.previewSectionTitle}>Trip Details:</Text>
+                  <Text style={styles.previewText}>📍 {tripData?.name}</Text>
+                  <Text style={styles.previewText}>🌍 {tripData?.location}</Text>
+                  <Text style={styles.previewText}>📅 {formatDate(tripData?.startDate)} to {formatDate(tripData?.endDate)}</Text>
+                  {tripData?.description && (
+                    <Text style={styles.previewText}>📝 {tripData.description}</Text>
+                  )}
+                </View>
+
+                {itineraryData && (
+                  <View style={styles.itineraryPreview}>
+                    <Text style={styles.previewSectionTitle}>Itinerary Preview:</Text>
+                    {Object.keys(itineraryData).map(day => (
+                      <View key={day} style={styles.dayPreview}>
+                        <Text style={styles.dayTitle}>{day.replace('_', ' ').toUpperCase()}</Text>
+                        {itineraryData[day]?.slice(0, 2).map((activity, index) => (
+                          <Text key={index} style={styles.activityText}>
+                            • {activity.startTime} - {activity.title}
+                          </Text>
+                        ))}
+                        {itineraryData[day]?.length > 2 && (
+                          <Text style={styles.moreText}>
+                            ... and {itineraryData[day].length - 2} more activities
+                          </Text>
+                        )}
+                      </View>
+                    ))}
+                  </View>
+                )}
+
+
+              </View>
+            </ScrollView>
           ) : (
             <ScrollView style={styles.formContainer} showsVerticalScrollIndicator={false}>
               {/* Helper Text */}
@@ -317,21 +367,49 @@ const AITripPlanningModal = ({
           {/* Footer Buttons - Hidden during loading */}
           {!loading && (
           <View style={styles.modalFooter}>
-            <CustomButton
-              title="Cancel"
-              onPress={handleCancel}
-              variant="outline"
-              style={styles.cancelButton}
-              disabled={loading}
-            />
-            <CustomButton
-              title={loading ? "Generating..." : "Generate Plan"}
-              onPress={handleGeneratePlan}
-              loading={loading}
-              disabled={loading}
-              style={styles.generateButton}
-              testID="generate-plan-button"
-            />
+            {hasData ? (
+              /* Data generated - show save/regenerate options */
+              <>
+                <CustomButton
+                  title="Generate New Plan"
+                  onPress={() => {
+                    // Reset and show form again
+                    onGeneratePlan({ regenerate: true });
+                  }}
+                  variant="outline"
+                  style={styles.cancelButton}
+                />
+                <CustomButton
+                  title="Create This Trip"
+                  onPress={() => {
+                    // This would trigger saving the trip
+                    console.log('User wants to save the generated trip');
+                    onClose(); // For now, just close modal
+                  }}
+                  style={styles.generateButton}
+                  testID="save-generated-trip"
+                />
+              </>
+            ) : (
+              /* No data - show normal form buttons */
+              <>
+                <CustomButton
+                  title="Cancel"
+                  onPress={handleCancel}
+                  variant="outline"
+                  style={styles.cancelButton}
+                  disabled={loading}
+                />
+                <CustomButton
+                  title="Generate Plan"
+                  onPress={handleGeneratePlan}
+                  loading={loading}
+                  disabled={loading}
+                  style={styles.generateButton}
+                  testID="generate-plan-button"
+                />
+              </>
+            )}
           </View>
           )}
         </View>
@@ -504,6 +582,68 @@ const styles = StyleSheet.create({
   generateButton: {
     flex: 1,
   },
+  // Preview styles
+  previewContainer: {
+    paddingVertical: 8,
+  },
+  previewTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text.primary,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  previewSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text.primary,
+    marginBottom: 8,
+    marginTop: 16,
+  },
+  tripPreview: {
+    backgroundColor: colors.background.secondary,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+  },
+  previewText: {
+    fontSize: 14,
+    color: colors.text.primary,
+    marginBottom: 4,
+    lineHeight: 20,
+  },
+  itineraryPreview: {
+    backgroundColor: colors.background.secondary,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+  },
+  dayPreview: {
+    marginBottom: 12,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border.primary,
+  },
+  dayTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.primary.main,
+    marginBottom: 4,
+  },
+  activityText: {
+    fontSize: 13,
+    color: colors.text.primary,
+    marginLeft: 8,
+    lineHeight: 18,
+  },
+  moreText: {
+    fontSize: 12,
+    color: colors.text.secondary,
+    fontStyle: 'italic',
+    marginLeft: 8,
+    marginTop: 4,
+  },
+
   // Dropdown styles
   dropdownOverlay: {
     flex: 1,

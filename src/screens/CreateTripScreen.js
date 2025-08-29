@@ -505,6 +505,9 @@ const CreateTripScreen = ({ navigation }) => {
         loading={aiLoading}
         loadingState={aiLoadingState}
         onCancelRequest={handleCancelAIRequest}
+        tripData={aiTripData}
+        itineraryData={hasAIData ? aiTripData?.itinerary : null}
+        hasData={hasAIData}
       />
     </ScreenLayout>
   );

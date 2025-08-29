@@ -1,7 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { generateTripPlan, generateActivitySuggestions, isOpenAIAvailable } from '../services/openai';
-import { createTrip } from '../services/trips';
-import { initializeItineraryForTrip } from '../services/itinerary';
+import { generateTripFromAI, validateAIResponse } from '../services/tripGeneration';
 import { useAuth } from '../context/AuthContext';
 
 /**
@@ -358,11 +357,11 @@ const useAITripPlanning = () => {
   }, [state.canRetry, state.lastUserInput, planTrip]);
 
   /**
-   * Save AI-generated trip to user's trips
+   * Save AI-generated trip to user's trips using enhanced trip generation service
    */
   const saveTrip = useCallback(async () => {
-    if (!state.parsedTripData) {
-      return { success: false, error: 'No trip data to save' };
+    if (!state.aiResponse) {
+      return { success: false, error: 'No AI response data to save' };
     }
 
     if (!user || !user.uid) {
@@ -372,54 +371,45 @@ const useAITripPlanning = () => {
     try {
       updateLoadingState(LOADING_STATES.GENERATING, { loadingMessage: 'Saving trip...' });
 
-      // Prepare trip data for saving (without userId in the data)
-      const tripToSave = {
-        ...state.parsedTripData.trip
-      };
+      console.log('AI Hook: Saving trip using enhanced generation service');
 
-      // Remove AI-specific fields that shouldn't be saved to Firestore
-      delete tripToSave.id;
-      delete tripToSave.userId; // Remove this as it's passed separately
-      delete tripToSave.aiGenerated; // Remove this as it's not in the standard TRIP_MODEL
-      delete tripToSave.aiPrompt; // Remove this as it's not in the standard TRIP_MODEL  
-      delete tripToSave.generatedAt; // Remove this as it's not in the standard TRIP_MODEL
-
-      console.log('AI Hook: Saving trip with user ID:', user.uid);
-      console.log('AI Hook: Trip data to save:', tripToSave);
-
-      // Create the trip with userId as separate parameter
-      const tripId = await createTrip(tripToSave, user.uid);
-      
-      console.log('AI Hook: Trip created successfully with ID:', tripId);
-
-      // Initialize itinerary if we have one
-      if (state.parsedTripData.itinerary) {
-        console.log('AI Hook: Initializing itinerary for saved trip');
-        try {
-          await initializeItineraryForTrip(tripId, user.uid, tripToSave.startDate, tripToSave.endDate);
-          console.log('AI Hook: Itinerary initialized successfully');
-        } catch (itineraryError) {
-          console.warn('AI Hook: Failed to initialize itinerary, but trip was created:', itineraryError);
-          // Don't fail the overall operation if itinerary fails
+      // Use the enhanced trip generation service
+      const result = await generateTripFromAI(
+        JSON.stringify(state.aiResponse), 
+        user.uid,
+        {
+          preserveActivities: true,
+          validateData: true
         }
+      );
+
+      if (!result.success) {
+        console.error('AI Hook: Trip generation failed:', result.error);
+        setError(result.error, ERROR_TYPES.SERVICE);
+        return { success: false, error: result.error };
       }
 
       updateLoadingState(LOADING_STATES.COMPLETE);
 
-      console.log('AI Hook: Trip saved successfully', { tripId });
+      console.log('AI Hook: Trip saved successfully with enhanced service', { 
+        tripId: result.data.tripId,
+        activitiesCreated: result.data.activitiesCreated 
+      });
 
       return { 
         success: true, 
-        tripId,
-        trip: { ...tripToSave, id: tripId }
+        tripId: result.data.tripId,
+        trip: result.data.trip,
+        activitiesCreated: result.data.activitiesCreated,
+        metadata: result.data.metadata
       };
 
     } catch (error) {
-      console.error('AI Hook: Error saving trip:', error);
+      console.error('AI Hook: Error saving trip with enhanced service:', error);
       setError('Failed to save trip', ERROR_TYPES.SERVICE);
       return { success: false, error: error.message };
     }
-  }, [state.parsedTripData, user, updateLoadingState, setError]);
+  }, [state.aiResponse, user, updateLoadingState, setError]);
 
   /**
    * Clear cache (useful for logout or manual refresh)
