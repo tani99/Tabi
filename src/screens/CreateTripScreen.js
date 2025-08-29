@@ -7,6 +7,8 @@ import ScreenHeader from '../components/layout/ScreenHeader';
 import CustomInput from '../components/CustomInput';
 import CustomButton from '../components/CustomButton';
 import QuickPlanButton from '../components/trip-planning/QuickPlanButton';
+import AITripPlanningModal from '../components/ai/AITripPlanningModal';
+import useAITripPlanning from '../hooks/useAITripPlanning';
 import { createTrip } from '../services/trips';
 import { useAuth } from '../context/AuthContext';
 import { colors } from '../theme/colors';
@@ -16,6 +18,20 @@ const CreateTripScreen = ({ navigation }) => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  
+  // AI Trip Planning Hook
+  const {
+    planTrip,
+    saveTrip,
+    isLoading: aiLoading,
+    hasData: hasAIData,
+    tripData: aiTripData,
+    error: aiError,
+    clearError: clearAIError
+  } = useAITripPlanning();
+  
+  // Modal state
+  const [showAIModal, setShowAIModal] = useState(false);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -66,13 +82,103 @@ const CreateTripScreen = ({ navigation }) => {
   };
 
   const handleAIPlanningPress = () => {
-    // TODO: Navigate to AI planning modal
-    // For now, just show an alert to indicate functionality
-    Alert.alert(
-      'AI Trip Planning',
-      'AI trip planning feature will open here. This will be implemented in the next steps.',
-      [{ text: 'OK' }]
-    );
+    setShowAIModal(true);
+    clearAIError(); // Clear any previous errors
+  };
+
+  const handleCloseAIModal = () => {
+    setShowAIModal(false);
+  };
+
+  const handleGeneratePlan = async (planningData) => {
+    try {
+      console.log('Creating AI trip plan with data:', planningData);
+      
+      // Calculate suggested start date (next week for planning purposes)
+      const suggestedStartDate = new Date();
+      suggestedStartDate.setDate(suggestedStartDate.getDate() + 7);
+      const suggestedEndDate = new Date(suggestedStartDate);
+      suggestedEndDate.setDate(suggestedStartDate.getDate() + planningData.duration - 1);
+      
+      // Create a prompt from the form data
+      const prompt = `Create a ${planningData.duration}-day trip to ${planningData.destination}. ` +
+        `Travel style: ${planningData.travelStyle}. ` +
+        `Suggested travel dates: starting around ${suggestedStartDate.toISOString().split('T')[0]} ` +
+        `(but you can adjust to optimal dates for the destination). ` +
+        (planningData.interests ? `Interests: ${planningData.interests}. ` : '') +
+        (planningData.budget ? `Budget: ${planningData.budget}. ` : '') +
+        (planningData.description ? `Additional details: ${planningData.description}. ` : '') +
+        `IMPORTANT: Generate dates that are in the future, not in the past.`;
+
+      const result = await planTrip(prompt);
+      
+      if (result.success && result.data) {
+        console.log('AI trip plan generated successfully');
+        // Modal will stay open to show the result
+        // User can then save the trip or generate another plan
+      } else {
+        console.error('Failed to generate trip plan:', result.error);
+        Alert.alert(
+          'Planning Failed',
+          result.error || 'Unable to generate trip plan. Please try again.',
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error) {
+      console.error('Error generating trip plan:', error);
+      Alert.alert(
+        'Error',
+        'An unexpected error occurred. Please try again.',
+        [{ text: 'OK' }]
+      );
+    }
+  };
+
+  const handleSaveAITrip = async () => {
+    try {
+      const result = await saveTrip();
+      
+      if (result.success) {
+        setShowAIModal(false);
+        Alert.alert(
+          'Success!',
+          'Your AI-generated trip has been created successfully.',
+          [
+            {
+              text: 'View Trip',
+              onPress: () => navigation.navigate('TripDetails', { tripId: result.tripId })
+            },
+            {
+              text: 'Create Another',
+              onPress: () => {
+                // Reset form state for manual creation
+                setFormData({
+                  name: '',
+                  location: '',
+                  startDate: new Date(),
+                  endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+                  description: ''
+                });
+                setErrors({});
+              }
+            }
+          ]
+        );
+      } else {
+        Alert.alert(
+          'Save Failed',
+          result.error || 'Unable to save trip. Please try again.',
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error) {
+      console.error('Error saving AI trip:', error);
+      Alert.alert(
+        'Error',
+        'An unexpected error occurred while saving. Please try again.',
+        [{ text: 'OK' }]
+      );
+    }
   };
 
   const handleCreateTrip = async () => {
@@ -167,8 +273,8 @@ const CreateTripScreen = ({ navigation }) => {
             <Text style={styles.sectionTitle}>Quick Planning</Text>
             <QuickPlanButton
               onPress={handleAIPlanningPress}
-              loading={false}
-              disabled={false}
+              loading={aiLoading}
+              disabled={aiLoading}
               testID="ai-planning-button"
             />
           </View>
@@ -365,6 +471,14 @@ const CreateTripScreen = ({ navigation }) => {
           </View>
         </View>
       </Modal>
+
+      {/* AI Trip Planning Modal */}
+      <AITripPlanningModal
+        visible={showAIModal}
+        onClose={handleCloseAIModal}
+        onGeneratePlan={handleGeneratePlan}
+        loading={aiLoading}
+      />
     </ScreenLayout>
   );
 };

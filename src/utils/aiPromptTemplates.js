@@ -38,6 +38,8 @@ DATA VALIDATION RULES:
 - Activity descriptions: 1-300 characters
 - Start date must be before or equal to end date
 - Activity times must be logical (start < end)
+- DATES MUST BE IN THE FUTURE: Always generate dates starting from tomorrow or later
+- Trip duration should be reasonable (1-30 days for most trips)
 
 TRAVEL PLANNING EXPERTISE:
 - Suggest realistic travel times and locations
@@ -52,14 +54,27 @@ ${budget ? `Budget consideration: ${budget}` : ''}
 ${travelStyle ? `Travel style: ${travelStyle}` : ''}
 ${!includeItinerary ? 'Focus on basic trip information only - no detailed itinerary needed.' : ''}`;
 
+  // Calculate recommended future dates
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1);
+  const nextWeek = new Date(today);
+  nextWeek.setDate(today.getDate() + 7);
+  
   const formatInstructions = `Return ONLY this exact JSON structure with NO additional text:
+
+IMPORTANT DATE REQUIREMENTS:
+- startDate MUST be ${tomorrow.toISOString().split('T')[0]} or later (tomorrow or future)
+- endDate MUST be after startDate
+- Use realistic future dates that make sense for trip planning
+- Current date is ${today.toISOString().split('T')[0]} - do NOT use dates in the past
 
 {
   "trip": {
     "name": "Trip name (1-${TRIP_VALIDATION.name.maxLength} chars)",
     "location": "Primary destination (1-${TRIP_VALIDATION.location.maxLength} chars)",
-    "startDate": "YYYY-MM-DD",
-    "endDate": "YYYY-MM-DD", 
+    "startDate": "YYYY-MM-DD (must be ${tomorrow.toISOString().split('T')[0]} or later)",
+    "endDate": "YYYY-MM-DD (must be after startDate)", 
     "description": "Brief trip overview (max ${TRIP_VALIDATION.description.maxLength} chars)",
     "aiGenerated": true,
     "aiPrompt": "${userInput.substring(0, 200)}...",
