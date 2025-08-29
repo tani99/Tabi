@@ -27,10 +27,6 @@ This file tracks bugs that have been identified but not yet fixed.
 
 **Current Status:** Not fixed
 
-**Files Modified:**
-- `src/components/AddActivityModal.js` - Enhanced default time logic
-- `src/screens/ItineraryScreen.js` - May need state management improvements
-
 ---
 
 ## Fixed Bugs
