@@ -283,7 +283,6 @@ const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 24,
     paddingHorizontal: 20,
   },
   content: {

@@ -15,6 +15,7 @@ import TripDetailsScreen from '../screens/TripDetailsScreen';
 import ItineraryScreen from '../screens/ItineraryScreen';
 import CreateTripScreen from '../screens/CreateTripScreen';
 import EditTripScreen from '../screens/EditTripScreen';
+import AITripPlanningScreen from '../screens/AITripPlanningScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import EditProfileScreen from '../screens/EditProfileScreen';
 
@@ -76,6 +77,7 @@ const AppStack = () => (
       )} 
     />
     <Stack.Screen name="EditTrip" component={EditTripScreen} />
+    <Stack.Screen name="AITripPlanning" component={AITripPlanningScreen} />
     <Stack.Screen 
       name="Profile" 
       component={(props) => (

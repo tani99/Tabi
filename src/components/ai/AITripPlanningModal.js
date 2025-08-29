@@ -13,13 +13,14 @@ import CustomInput from '../CustomInput';
 import CustomButton from '../CustomButton';
 import AIPromptInput from './AIPromptInput';
 import AILoadingIndicator from './AILoadingIndicator';
+import TripPlanPreview from '../trip-planning/TripPlanPreview';
 import { colors } from '../../theme/colors';
 
 /**
  * AITripPlanningModal - Main interface for users to input trip planning requirements
  * Modal overlay with form inputs for destination, duration, interests, budget fields
  */
-const AITripPlanningModal = ({ 
+const AITripPlanningModal = ({
   visible, 
   onClose, 
   onGeneratePlan,
@@ -28,7 +29,9 @@ const AITripPlanningModal = ({
   onCancelRequest,
   tripData = null,
   itineraryData = null,
-  hasData = false
+  hasData = false,
+  onCreateTrip,
+  onEditManually
 }) => {
   const [formData, setFormData] = useState({
     destination: '',
@@ -228,44 +231,19 @@ const AITripPlanningModal = ({
             </View>
           ) : hasData ? (
             /* AI Generated Data Preview */
-            <ScrollView style={styles.formContainer} showsVerticalScrollIndicator={false}>
-              <View style={styles.previewContainer}>
-                <Text style={styles.previewTitle}>🎉 Trip Generated Successfully!</Text>
-                
-                <View style={styles.tripPreview}>
-                  <Text style={styles.previewSectionTitle}>Trip Details:</Text>
-                  <Text style={styles.previewText}>📍 {tripData?.name}</Text>
-                  <Text style={styles.previewText}>🌍 {tripData?.location}</Text>
-                  <Text style={styles.previewText}>📅 {formatDate(tripData?.startDate)} to {formatDate(tripData?.endDate)}</Text>
-                  {tripData?.description && (
-                    <Text style={styles.previewText}>📝 {tripData.description}</Text>
-                  )}
-                </View>
-
-                {itineraryData && (
-                  <View style={styles.itineraryPreview}>
-                    <Text style={styles.previewSectionTitle}>Itinerary Preview:</Text>
-                    {Object.keys(itineraryData).map(day => (
-                      <View key={day} style={styles.dayPreview}>
-                        <Text style={styles.dayTitle}>{day.replace('_', ' ').toUpperCase()}</Text>
-                        {itineraryData[day]?.slice(0, 2).map((activity, index) => (
-                          <Text key={index} style={styles.activityText}>
-                            • {activity.startTime} - {activity.title}
-                          </Text>
-                        ))}
-                        {itineraryData[day]?.length > 2 && (
-                          <Text style={styles.moreText}>
-                            ... and {itineraryData[day].length - 2} more activities
-                          </Text>
-                        )}
-                      </View>
-                    ))}
-                  </View>
-                )}
-
-
-              </View>
-            </ScrollView>
+            <TripPlanPreview
+              tripData={tripData}
+              itineraryData={itineraryData}
+              onCreateTrip={onCreateTrip}
+              onGenerateAnother={() => {
+                // Reset to form view for new generation
+                if (onGeneratePlan) {
+                  onGeneratePlan(formData);
+                }
+              }}
+              onEditManually={onEditManually}
+              style={styles.previewContainer}
+            />
           ) : (
             <ScrollView style={styles.formContainer} showsVerticalScrollIndicator={false}>
               {/* Helper Text */}
@@ -364,52 +342,24 @@ const AITripPlanningModal = ({
           </ScrollView>
           )}
 
-          {/* Footer Buttons - Hidden during loading */}
-          {!loading && (
+          {/* Footer Buttons - Hidden during loading and when showing preview */}
+          {!loading && !hasData && (
           <View style={styles.modalFooter}>
-            {hasData ? (
-              /* Data generated - show save/regenerate options */
-              <>
-                <CustomButton
-                  title="Generate New Plan"
-                  onPress={() => {
-                    // Reset and show form again
-                    onGeneratePlan({ regenerate: true });
-                  }}
-                  variant="outline"
-                  style={styles.cancelButton}
-                />
-                <CustomButton
-                  title="Create This Trip"
-                  onPress={() => {
-                    // This would trigger saving the trip
-                    console.log('User wants to save the generated trip');
-                    onClose(); // For now, just close modal
-                  }}
-                  style={styles.generateButton}
-                  testID="save-generated-trip"
-                />
-              </>
-            ) : (
-              /* No data - show normal form buttons */
-              <>
-                <CustomButton
-                  title="Cancel"
-                  onPress={handleCancel}
-                  variant="outline"
-                  style={styles.cancelButton}
-                  disabled={loading}
-                />
-                <CustomButton
-                  title="Generate Plan"
-                  onPress={handleGeneratePlan}
-                  loading={loading}
-                  disabled={loading}
-                  style={styles.generateButton}
-                  testID="generate-plan-button"
-                />
-              </>
-            )}
+            <CustomButton
+              title="Cancel"
+              onPress={handleCancel}
+              variant="outline"
+              style={styles.cancelButton}
+              disabled={loading}
+            />
+            <CustomButton
+              title="Generate Plan"
+              onPress={handleGeneratePlan}
+              loading={loading}
+              disabled={loading}
+              style={styles.generateButton}
+              testID="generate-plan-button"
+            />
           </View>
           )}
         </View>
@@ -582,66 +532,9 @@ const styles = StyleSheet.create({
   generateButton: {
     flex: 1,
   },
-  // Preview styles
+  // Preview container - minimal styling for TripPlanPreview component
   previewContainer: {
-    paddingVertical: 8,
-  },
-  previewTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.text.primary,
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  previewSectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text.primary,
-    marginBottom: 8,
-    marginTop: 16,
-  },
-  tripPreview: {
-    backgroundColor: colors.background.secondary,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-  },
-  previewText: {
-    fontSize: 14,
-    color: colors.text.primary,
-    marginBottom: 4,
-    lineHeight: 20,
-  },
-  itineraryPreview: {
-    backgroundColor: colors.background.secondary,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-  },
-  dayPreview: {
-    marginBottom: 12,
-    paddingBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.primary,
-  },
-  dayTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.primary.main,
-    marginBottom: 4,
-  },
-  activityText: {
-    fontSize: 13,
-    color: colors.text.primary,
-    marginLeft: 8,
-    lineHeight: 18,
-  },
-  moreText: {
-    fontSize: 12,
-    color: colors.text.secondary,
-    fontStyle: 'italic',
-    marginLeft: 8,
-    marginTop: 4,
+    flex: 1,
   },
 
   // Dropdown styles
