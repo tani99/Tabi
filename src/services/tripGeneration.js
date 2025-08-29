@@ -7,7 +7,7 @@
 
 import { parseTripPlanningResponse, sanitizeAIText } from '../utils/tripDataParser';
 import { createTrip } from './trips';
-import { initializeItineraryForTrip } from './itinerary';
+import { initializeItineraryForTrip, addActivityToDay } from './itinerary';
 import { TRIP_VALIDATION, TRIP_STATUS } from '../utils/tripConstants';
 
 /**
@@ -68,13 +68,13 @@ export const generateTripFromAI = async (aiResponse, userId, options = {}) => {
     let activitiesCreated = 0;
     if (itineraryData && Object.keys(itineraryData).length > 0) {
       try {
-        const activityResult = await generateActivitiesFromItinerary(
+        const activitiesResult = await generateActivitiesFromItinerary(
           tripId, 
           userId, 
           itineraryData, 
           enhancedTrip.data
         );
-        activitiesCreated = activityResult.activitiesCreated;
+        activitiesCreated = activitiesResult.activitiesCreated;
         console.log(`TripGeneration: ${activitiesCreated} activities created`);
       } catch (activityError) {
         console.warn('TripGeneration: Failed to create activities, but trip was created:', activityError);
@@ -243,17 +243,36 @@ const generateActivitiesFromItinerary = async (tripId, userId, itineraryData, tr
   try {
     console.log('TripGeneration: Generating activities from itinerary');
     
+    // Initialize the itinerary first to ensure proper structure
+    console.log('TripGeneration: Initializing itinerary for trip:', tripId);
+    const itinerary = await initializeItineraryForTrip(tripId, userId, tripData.startDate, tripData.endDate);
+    console.log('TripGeneration: Itinerary initialized with', itinerary?.days?.length, 'days');
+    
     let activitiesCreated = 0;
     const startDate = new Date(tripData.startDate);
 
+    // Sort day keys to ensure proper order (day_1, day_2, etc.)
+    const sortedDayKeys = Object.keys(itineraryData).sort((a, b) => {
+      const aNum = parseInt(a.split('_')[1]);
+      const bNum = parseInt(b.split('_')[1]);
+      return aNum - bNum;
+    });
+    
+    console.log('TripGeneration: Found itinerary days:', sortedDayKeys);
+    console.log('TripGeneration: Full itinerary structure:', JSON.stringify(itineraryData, null, 2));
+
     // Process each day's activities
-    for (const [dayKey, activities] of Object.entries(itineraryData)) {
+    for (const dayKey of sortedDayKeys) {
+      const activities = itineraryData[dayKey];
       if (!Array.isArray(activities)) continue;
 
       // Extract day number from key (e.g., "day_1" -> 1)
       const dayNumber = parseInt(dayKey.split('_')[1]);
+      const dayIndex = dayNumber - 1; // Convert to 0-based index
       const activityDate = new Date(startDate);
-      activityDate.setDate(startDate.getDate() + dayNumber - 1);
+      activityDate.setDate(startDate.getDate() + dayIndex);
+
+      console.log(`TripGeneration: Processing ${activities.length} activities for day ${dayNumber}:`, activities.map(a => a.title || a.name));
 
       for (const activity of activities) {
         try {
@@ -261,7 +280,8 @@ const generateActivitiesFromItinerary = async (tripId, userId, itineraryData, tr
             activity, 
             activityDate, 
             tripId, 
-            userId
+            userId,
+            dayIndex
           );
 
           if (processedActivity.success) {
@@ -274,6 +294,8 @@ const generateActivitiesFromItinerary = async (tripId, userId, itineraryData, tr
         }
       }
     }
+
+    console.log(`TripGeneration: Successfully created ${activitiesCreated} activities`);
 
     return {
       success: true,
@@ -296,34 +318,86 @@ const generateActivitiesFromItinerary = async (tripId, userId, itineraryData, tr
  * @param {Date} date - Date for the activity
  * @param {string} tripId - Trip ID
  * @param {string} userId - User ID
+ * @param {number} dayIndex - Day index in the itinerary
  * @returns {Object} - Processing result
  */
-const processActivityForCreation = async (activity, date, tripId, userId) => {
+const processActivityForCreation = async (activity, date, tripId, userId, dayIndex) => {
   try {
-    // Create activity object compatible with the itinerary service
-    const processedActivity = {
-      title: sanitizeAIText(activity.title, 100),
-      description: sanitizeAIText(activity.description, 300),
-      startTime: activity.startTime,
-      endTime: activity.endTime,
-      location: activity.location ? sanitizeAIText(activity.location, 200) : '',
-      category: activity.category || 'sightseeing',
-      date: date.toISOString().split('T')[0], // YYYY-MM-DD format
-      aiGenerated: true,
-      createdAt: new Date().toISOString()
+    // Parse times - they could be strings like "09:00" or "14:30"
+    const parseTimeOnDate = (timeString, baseDate) => {
+      if (!timeString || typeof timeString !== 'string') {
+        const defaultTime = new Date(baseDate);
+        defaultTime.setHours(9, 0, 0, 0); // Default to 9:00 AM
+        return defaultTime;
+      }
+      
+      try {
+        const timeParts = timeString.split(':');
+        if (timeParts.length !== 2) throw new Error('Invalid time format');
+        
+        const hours = parseInt(timeParts[0].trim());
+        const minutes = parseInt(timeParts[1].trim());
+        
+        if (isNaN(hours) || isNaN(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+          throw new Error('Invalid time values');
+        }
+        
+        const dateTime = new Date(baseDate);
+        dateTime.setHours(hours, minutes, 0, 0);
+        return dateTime;
+      } catch (error) {
+        console.warn(`Failed to parse time "${timeString}":`, error.message);
+        const defaultTime = new Date(baseDate);
+        defaultTime.setHours(9, 0, 0, 0); // Fallback to 9:00 AM
+        return defaultTime;
+      }
     };
 
-    // Here you would typically call an activity creation service
-    // For now, we'll simulate success since the actual activity service
-    // would be implemented in a future step
-    console.log('TripGeneration: Would create activity:', processedActivity.title);
+    const startTime = parseTimeOnDate(activity.startTime, date);
+    const endTime = parseTimeOnDate(activity.endTime, date);
+
+    // Ensure end time is after start time
+    if (endTime <= startTime) {
+      endTime.setHours(startTime.getHours() + 1); // Default to 1 hour duration
+    }
+
+    // Validate and sanitize activity data
+    const title = sanitizeAIText(activity.title || activity.name || 'Activity', 100);
+    const notes = sanitizeAIText(activity.description || '', 500);
+    const location = activity.location ? sanitizeAIText(activity.location, 200) : null;
+    const type = activity.category || activity.type || 'sightseeing';
+
+    // Ensure we have a valid title
+    if (!title || title.trim().length === 0) {
+      throw new Error('Activity must have a valid title');
+    }
+
+    // Create activity object compatible with the itinerary service
+    const activityData = {
+      title: title.trim(),
+      notes: notes.trim(),
+      startTime: startTime,
+      endTime: endTime,
+      location: location,
+      type: type,
+      aiGenerated: true
+    };
+
+    console.log(`TripGeneration: Creating activity "${activityData.title}" on day ${dayIndex + 1}`);
+
+    // Actually create the activity using the itinerary service
+    const createdActivity = await addActivityToDay(tripId, userId, dayIndex, activityData);
+
+    console.log(`TripGeneration: Successfully created activity with ID: ${createdActivity.id}`);
 
     return {
       success: true,
-      activity: processedActivity
+      activityId: createdActivity.id,
+      activity: createdActivity
     };
 
   } catch (error) {
+    console.error('TripGeneration: Failed to create activity:', error);
     return {
       success: false,
       error: error.message

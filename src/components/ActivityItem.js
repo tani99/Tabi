@@ -42,8 +42,20 @@ const ActivityItem = ({
   const getTimeRange = () => {
     if (!activity.startTime || !activity.endTime) return 'No time set';
     
-    const start = new Date(activity.startTime);
-    const end = new Date(activity.endTime);
+    // Handle Firestore Timestamp conversion
+    let start, end;
+    
+    if (activity.startTime?.toDate && typeof activity.startTime.toDate === 'function') {
+      start = activity.startTime.toDate();
+    } else {
+      start = new Date(activity.startTime);
+    }
+    
+    if (activity.endTime?.toDate && typeof activity.endTime.toDate === 'function') {
+      end = activity.endTime.toDate();
+    } else {
+      end = new Date(activity.endTime);
+    }
     
     const formatTime = (date) => {
       return date.toLocaleTimeString('en-US', {

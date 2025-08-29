@@ -194,8 +194,21 @@ const ItineraryScreen = ({ navigation, route }) => {
       
       // Sort activities by start time
       return [...currentDay.activities].sort((a, b) => {
-        const aStartTime = new Date(a.startTime);
-        const bStartTime = new Date(b.startTime);
+        // Handle Firestore Timestamp conversion
+        let aStartTime, bStartTime;
+        
+        if (a.startTime?.toDate && typeof a.startTime.toDate === 'function') {
+          aStartTime = a.startTime.toDate();
+        } else {
+          aStartTime = new Date(a.startTime);
+        }
+        
+        if (b.startTime?.toDate && typeof b.startTime.toDate === 'function') {
+          bStartTime = b.startTime.toDate();
+        } else {
+          bStartTime = new Date(b.startTime);
+        }
+        
         return aStartTime.getTime() - bStartTime.getTime();
       });
     } catch (error) {
@@ -214,14 +227,31 @@ const ItineraryScreen = ({ navigation, route }) => {
       
       // Sort activities by end time and get the last one
       const sortedActivities = [...activities].sort((a, b) => {
-        const aEndTime = new Date(a.endTime);
-        const bEndTime = new Date(b.endTime);
+        // Handle Firestore Timestamp conversion
+        let aEndTime, bEndTime;
+        
+        if (a.endTime?.toDate && typeof a.endTime.toDate === 'function') {
+          aEndTime = a.endTime.toDate();
+        } else {
+          aEndTime = new Date(a.endTime);
+        }
+        
+        if (b.endTime?.toDate && typeof b.endTime.toDate === 'function') {
+          bEndTime = b.endTime.toDate();
+        } else {
+          bEndTime = new Date(b.endTime);
+        }
+        
         return aEndTime.getTime() - bEndTime.getTime();
       });
       
       const lastActivity = sortedActivities[sortedActivities.length - 1];
       if (lastActivity?.endTime) {
-        return new Date(lastActivity.endTime);
+        if (lastActivity.endTime?.toDate && typeof lastActivity.endTime.toDate === 'function') {
+          return lastActivity.endTime.toDate();
+        } else {
+          return new Date(lastActivity.endTime);
+        }
       }
       
       return null;

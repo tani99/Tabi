@@ -17,7 +17,7 @@ const TripPreviewModal = ({
   onClose,
   onCreateTrip,
   onGenerateAnother,
-  onEditManually,
+  creatingTrip = false,
 }) => {
   return (
     <Modal
@@ -45,7 +45,7 @@ const TripPreviewModal = ({
           itineraryData={itineraryData}
           onCreateTrip={onCreateTrip}
           onGenerateAnother={onGenerateAnother}
-          onEditManually={onEditManually}
+          creatingTrip={creatingTrip}
           style={styles.previewContent}
         />
       </View>

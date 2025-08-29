@@ -190,17 +190,34 @@ const DayView = ({
 
   // Generate data for FlatList - use stored days if available
   const data = storedDays.length > 0 
-    ? storedDays.map((day, index) => ({
-        day: index + 1, // Use array index + 1 as day number
-        date: day.date ? new Date(day.date) : getDayData(index + 1)?.date,
-        formattedDate: day.date 
-          ? new Date(day.date).toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric',
-            })
-          : getDayData(index + 1)?.formattedDate,
-        storedDay: day // Include the full stored day data
-      })).filter(Boolean) // Filter out any undefined items
+    ? storedDays.map((day, index) => {
+        // Handle Firestore Timestamp conversion
+        let dayDate = null;
+        if (day.date) {
+          if (day.date.toDate && typeof day.date.toDate === 'function') {
+            // Firestore Timestamp
+            dayDate = day.date.toDate();
+          } else if (day.date instanceof Date) {
+            // Already a Date object
+            dayDate = day.date;
+          } else {
+            // String or other format
+            dayDate = new Date(day.date);
+          }
+        }
+        
+        return {
+          day: index + 1, // Use array index + 1 as day number
+          date: dayDate || getDayData(index + 1)?.date,
+          formattedDate: dayDate 
+            ? dayDate.toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+              })
+            : getDayData(index + 1)?.formattedDate,
+          storedDay: day // Include the full stored day data
+        };
+      }).filter(Boolean) // Filter out any undefined items
     : Array.from({ length: totalDays }, (_, index) => 
         getDayData(index + 1)
       ).filter(Boolean);

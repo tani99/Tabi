@@ -12,7 +12,8 @@ import {
   limit,
   startAfter,
   serverTimestamp,
-  writeBatch
+  writeBatch,
+  Timestamp
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
@@ -452,13 +453,13 @@ export const addActivityToDay = async (tripId, userId, dayIndex, activityData) =
     const activity = {
       id: `activity_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       title: activityData.title.trim(),
-      startTime: activityData.startTime instanceof Date ? activityData.startTime : new Date(activityData.startTime),
-      endTime: activityData.endTime instanceof Date ? activityData.endTime : new Date(activityData.endTime),
+      startTime: Timestamp.fromDate(activityData.startTime instanceof Date ? activityData.startTime : new Date(activityData.startTime)),
+      endTime: Timestamp.fromDate(activityData.endTime instanceof Date ? activityData.endTime : new Date(activityData.endTime)),
       notes: activityData.notes ? activityData.notes.trim() : '',
       location: activityData.location || null,
       type: activityData.type || 'general',
-      createdAt: new Date(),
-      updatedAt: new Date()
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now()
     };
 
     // Update the specific day's activities array
@@ -472,7 +473,7 @@ export const addActivityToDay = async (tripId, userId, dayIndex, activityData) =
 
     // Add the new activity to the day's activities
     currentDay.activities = [...currentDay.activities, activity];
-    currentDay.updatedAt = new Date();
+    currentDay.updatedAt = Timestamp.now();
 
     // Update the itinerary document
     await updateDoc(doc(db, ITINERARIES_COLLECTION, itinerary.id), {
@@ -721,12 +722,12 @@ export const initializeItineraryForTrip = async (tripId, userId, startDate, endD
 
       const day = {
         id: `day_${Date.now()}_${i}_${Math.random().toString(36).substr(2, 9)}`,
-        date: dayDate,
+        date: Timestamp.fromDate(dayDate),
         weather: null,
         activities: [],
         notes: '',
-        createdAt: new Date(),
-        updatedAt: new Date()
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now()
       };
 
       days.push(day);

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -32,6 +33,8 @@ const AITripPlanningScreen = ({ navigation }) => {
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [showLoadingModal, setShowLoadingModal] = useState(false);
   const [showTravelStyleDropdown, setShowTravelStyleDropdown] = useState(false);
+  const [creatingTrip, setCreatingTrip] = useState(false);
+  const [tripCreationComplete, setTripCreationComplete] = useState(false);
 
   const { 
     planTrip, 
@@ -59,19 +62,34 @@ const AITripPlanningScreen = ({ navigation }) => {
   useEffect(() => {
     if (loading) {
       setShowLoadingModal(true);
-    } else if (!loading && showLoadingModal) {
+    } else if (!loading && showLoadingModal && !tripCreationComplete) {
       // Loading finished, but keep modal open briefly for completion state
+      // Only show preview if trip creation hasn't been completed yet
       if (hasAIData && loadingState === 'complete') {
         const timer = setTimeout(() => {
           setShowLoadingModal(false);
-          setShowPreviewModal(true);
+          if (!tripCreationComplete) {
+            setShowPreviewModal(true);
+          }
         }, 1500);
         return () => clearTimeout(timer);
       } else {
         setShowLoadingModal(false);
       }
     }
-  }, [loading, hasAIData, loadingState, showLoadingModal]);
+  }, [loading, hasAIData, loadingState, showLoadingModal, tripCreationComplete]);
+
+  // Cleanup modals when navigating away from this screen
+  useFocusEffect(
+    React.useCallback(() => {
+      return () => {
+        // Cleanup function when screen loses focus
+        setShowPreviewModal(false);
+        setShowLoadingModal(false);
+        setTripCreationComplete(false);
+      };
+    }, [])
+  );
 
   const updateFormData = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -132,23 +150,44 @@ const AITripPlanningScreen = ({ navigation }) => {
 
   const handleCreateTrip = async () => {
     try {
+      setCreatingTrip(true);
+      setTripCreationComplete(true); // Prevent preview modal from reopening
       const result = await saveTrip();
       if (result.success) {
         setShowPreviewModal(false);
+        
+        // Enhanced success message with AI attribution and activity count
+        const activitiesText = result.activitiesCreated > 0 
+          ? `with ${result.activitiesCreated} AI-generated activities` 
+          : '';
+        
         Alert.alert(
-          'Trip Created!',
-          'Your AI-generated trip has been saved successfully.',
+          '🎉 Trip Created Successfully!',
+          `Your AI-generated trip has been saved ${activitiesText}. You can view, edit, and customize it just like any other trip.`,
           [
             {
               text: 'View Trip',
+              style: 'default',
               onPress: () => {
-                // Navigate to trip details
-                navigation.navigate('TripDetails', { tripId: result.tripId });
+                // Ensure modal is closed and reset state
+                setShowPreviewModal(false);
+                setTripCreationComplete(false);
+                resetAI();
+                
+                // Navigate to trip details with metadata
+                navigation.navigate('TripDetails', { 
+                  tripId: result.tripId,
+                  isNewAITrip: true // Flag to potentially show welcome tips
+                });
               }
             },
             {
               text: 'Create Another',
+              style: 'cancel',
               onPress: () => {
+                // Ensure modal is closed and reset all state
+                setShowPreviewModal(false);
+                setTripCreationComplete(false);
                 resetAI();
                 setFormData({
                   destination: '',
@@ -165,30 +204,30 @@ const AITripPlanningScreen = ({ navigation }) => {
         );
       } else {
         Alert.alert(
-          'Save Failed',
-          result.error || 'Unable to save trip. Please try again.',
+          'Trip Creation Failed',
+          result.error || 'Unable to save your AI-generated trip. Please try again or contact support if the problem persists.',
           [{ text: 'OK' }]
         );
       }
     } catch (error) {
       console.error('Error saving AI trip:', error);
       Alert.alert(
-        'Error',
-        'An unexpected error occurred while saving. Please try again.',
+        'Unexpected Error',
+        'An unexpected error occurred while saving your trip. Please check your internet connection and try again.',
         [{ text: 'OK' }]
       );
+    } finally {
+      setCreatingTrip(false);
+      // Note: Don't reset tripCreationComplete here as it should stay true
+      // to prevent modal reopening until user explicitly starts a new action
     }
   };
 
   const handleGenerateAnother = () => {
     setShowPreviewModal(false);
+    setTripCreationComplete(false);
     resetAI();
     // Keep form data so user can modify and regenerate
-  };
-
-  const handleEditManually = () => {
-    setShowPreviewModal(false);
-    navigation.navigate('CreateTrip');
   };
 
   const getTravelStyleDisplay = () => {
@@ -374,7 +413,8 @@ const AITripPlanningScreen = ({ navigation }) => {
         onClose={() => setShowPreviewModal(false)}
         onCreateTrip={handleCreateTrip}
         onGenerateAnother={handleGenerateAnother}
-        onEditManually={handleEditManually}
+
+        creatingTrip={creatingTrip}
       />
     </ScreenLayout>
   );

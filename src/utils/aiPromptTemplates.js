@@ -46,7 +46,9 @@ TRAVEL PLANNING EXPERTISE:
 - Include diverse activity types (sightseeing, dining, culture, leisure)
 - Consider local customs, opening hours, and practical logistics
 - Balance busy days with relaxation time
-- Suggest appropriate activity durations`;
+- Suggest appropriate activity durations
+- CREATE ACTIVITIES FOR EVERY DAY of the trip (day_1, day_2, day_3, etc.)
+- Each day should have 3-6 activities depending on trip length and style`;
 
   const userPrompt = `Plan a trip based on this request: "${userInput}"
 
@@ -69,6 +71,13 @@ IMPORTANT DATE REQUIREMENTS:
 - Use realistic future dates that make sense for trip planning
 - Current date is ${today.toISOString().split('T')[0]} - do NOT use dates in the past
 
+IMPORTANT ITINERARY REQUIREMENTS (when includeItinerary is true):
+- Create activities for EVERY day of the trip duration
+- If trip is 3 days, include day_1, day_2, and day_3
+- If trip is 5 days, include day_1, day_2, day_3, day_4, and day_5
+- Each day should have multiple activities (typically 3-6)
+- Do NOT skip days or create activities for only the first day
+
 {
   "trip": {
     "name": "Trip name (1-${TRIP_VALIDATION.name.maxLength} chars)",
@@ -88,6 +97,16 @@ IMPORTANT DATE REQUIREMENTS:
         "startTime": "HH:MM",
         "endTime": "HH:MM",
         "location": "Specific location",
+        "category": "sightseeing|dining|shopping|transportation|accommodation"
+      }
+    ],
+    "day_2": [
+      {
+        "title": "Another activity",
+        "description": "Activity details",
+        "startTime": "HH:MM", 
+        "endTime": "HH:MM",
+        "location": "Location",
         "category": "sightseeing|dining|shopping|transportation|accommodation"
       }
     ]

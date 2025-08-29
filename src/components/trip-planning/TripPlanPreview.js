@@ -5,6 +5,7 @@ import {
   ScrollView,
   StyleSheet,
   TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
@@ -14,7 +15,7 @@ const TripPlanPreview = ({
   itineraryData,
   onCreateTrip,
   onGenerateAnother,
-  onEditManually,
+  creatingTrip = false,
   style
 }) => {
   const formatDate = (date) => {
@@ -169,33 +170,48 @@ const TripPlanPreview = ({
         {/* Action Buttons */}
         <View style={styles.actionsContainer}>
           <TouchableOpacity 
-            style={[styles.actionButton, styles.primaryButton]} 
-            onPress={onCreateTrip}
-            activeOpacity={0.8}
+            style={[
+              styles.actionButton, 
+              styles.primaryButton,
+              creatingTrip && styles.disabledButton
+            ]} 
+            onPress={creatingTrip ? null : onCreateTrip}
+            activeOpacity={creatingTrip ? 1 : 0.8}
+            disabled={creatingTrip}
           >
-            <Ionicons name="checkmark-circle" size={20} color={colors.button.primary.text} />
-            <Text style={styles.primaryButtonText}>Create This Trip</Text>
+            {creatingTrip ? (
+              <ActivityIndicator size="small" color={colors.button.primary.text} />
+            ) : (
+              <Ionicons name="checkmark-circle" size={20} color={colors.button.primary.text} />
+            )}
+            <Text style={styles.primaryButtonText}>
+              {creatingTrip ? 'Creating Trip...' : 'Create This Trip'}
+            </Text>
           </TouchableOpacity>
           
-          <View style={styles.secondaryActions}>
-            <TouchableOpacity 
-              style={[styles.actionButton, styles.secondaryButton]} 
-              onPress={onGenerateAnother}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="refresh" size={18} color={colors.primary.main} />
-              <Text style={styles.secondaryButtonText}>Generate Another</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={[styles.actionButton, styles.secondaryButton]} 
-              onPress={onEditManually}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="create-outline" size={18} color={colors.primary.main} />
-              <Text style={styles.secondaryButtonText}>Edit Manually</Text>
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity 
+            style={[
+              styles.actionButton, 
+              styles.secondaryButton,
+              styles.singleSecondaryButton,
+              creatingTrip && styles.disabledSecondaryButton
+            ]} 
+            onPress={creatingTrip ? null : onGenerateAnother}
+            activeOpacity={creatingTrip ? 1 : 0.8}
+            disabled={creatingTrip}
+          >
+            <Ionicons 
+              name="refresh" 
+              size={18} 
+              color={creatingTrip ? colors.text.disabled : colors.primary.main} 
+            />
+            <Text style={[
+              styles.secondaryButtonText,
+              creatingTrip && styles.disabledSecondaryButtonText
+            ]}>
+              Generate Another
+            </Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </View>
@@ -426,28 +442,37 @@ const styles = StyleSheet.create({
   primaryButton: {
     backgroundColor: colors.button.primary.background,
   },
+  disabledButton: {
+    backgroundColor: colors.button.disabled.background,
+    opacity: 0.7,
+  },
   primaryButtonText: {
     fontSize: 16,
     fontWeight: '600',
     color: colors.button.primary.text,
     marginLeft: 8,
   },
-  secondaryActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
   secondaryButton: {
     backgroundColor: colors.background.primary,
     borderWidth: 1,
     borderColor: colors.border.primary,
-    flex: 1,
-    marginHorizontal: 6,
+  },
+  singleSecondaryButton: {
+    marginTop: 8,
+    alignSelf: 'center',
+    minWidth: 180,
   },
   secondaryButtonText: {
     fontSize: 14,
     fontWeight: '600',
     color: colors.primary.main,
     marginLeft: 6,
+  },
+  disabledSecondaryButton: {
+    opacity: 0.5,
+  },
+  disabledSecondaryButtonText: {
+    color: colors.text.disabled,
   },
 });
 
