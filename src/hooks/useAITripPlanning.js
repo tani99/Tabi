@@ -204,6 +204,9 @@ const useAITripPlanning = () => {
         retryCount: 0
       });
 
+      // Small delay to show analyzing state
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
       // Check cache first
       const cachedResponse = getCachedResponse(cacheKey);
       if (cachedResponse) {
@@ -240,6 +243,9 @@ const useAITripPlanning = () => {
 
       updateLoadingState(LOADING_STATES.PARSING);
 
+      // Small delay to show parsing state
+      await new Promise(resolve => setTimeout(resolve, 800));
+
       if (!result.success) {
         const errorType = result.code === 'configuration-invalid' ? ERROR_TYPES.CONFIGURATION :
                          result.code === 'parsing-failed' ? ERROR_TYPES.PARSING :
@@ -251,6 +257,9 @@ const useAITripPlanning = () => {
       }
 
       updateLoadingState(LOADING_STATES.VALIDATING);
+
+      // Small delay to show validating state
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       // Update state with successful result
       const responseData = {

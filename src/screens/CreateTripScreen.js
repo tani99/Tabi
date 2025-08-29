@@ -24,10 +24,12 @@ const CreateTripScreen = ({ navigation }) => {
     planTrip,
     saveTrip,
     isLoading: aiLoading,
+    loadingState: aiLoadingState,
     hasData: hasAIData,
     tripData: aiTripData,
     error: aiError,
-    clearError: clearAIError
+    clearError: clearAIError,
+    reset: resetAI
   } = useAITripPlanning();
   
   // Modal state
@@ -87,6 +89,29 @@ const CreateTripScreen = ({ navigation }) => {
   };
 
   const handleCloseAIModal = () => {
+    if (aiLoading) {
+      Alert.alert(
+        'Cancel Trip Planning',
+        'AI is currently generating your trip. Are you sure you want to cancel?',
+        [
+          { text: 'Continue Planning', style: 'cancel' },
+          { 
+            text: 'Cancel', 
+            style: 'destructive',
+            onPress: () => {
+              resetAI();
+              setShowAIModal(false);
+            }
+          }
+        ]
+      );
+    } else {
+      setShowAIModal(false);
+    }
+  };
+
+  const handleCancelAIRequest = () => {
+    resetAI();
     setShowAIModal(false);
   };
 
@@ -478,6 +503,8 @@ const CreateTripScreen = ({ navigation }) => {
         onClose={handleCloseAIModal}
         onGeneratePlan={handleGeneratePlan}
         loading={aiLoading}
+        loadingState={aiLoadingState}
+        onCancelRequest={handleCancelAIRequest}
       />
     </ScreenLayout>
   );

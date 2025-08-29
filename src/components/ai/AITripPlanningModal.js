@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import CustomInput from '../CustomInput';
 import CustomButton from '../CustomButton';
 import AIPromptInput from './AIPromptInput';
+import AILoadingIndicator from './AILoadingIndicator';
 import { colors } from '../../theme/colors';
 
 /**
@@ -22,7 +23,9 @@ const AITripPlanningModal = ({
   visible, 
   onClose, 
   onGeneratePlan,
-  loading = false 
+  loading = false,
+  loadingState = 'idle',
+  onCancelRequest
 }) => {
   const [formData, setFormData] = useState({
     destination: '',
@@ -203,11 +206,22 @@ const AITripPlanningModal = ({
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={styles.formContainer} showsVerticalScrollIndicator={false}>
-            {/* Helper Text */}
-            <Text style={styles.helperText}>
-              Tell us about your dream trip and we'll create a personalized itinerary for you!
-            </Text>
+          {loading ? (
+            /* AI Loading State */
+            <View style={styles.loadingContainer}>
+              <AILoadingIndicator
+                loadingState={loadingState}
+                onCancel={onCancelRequest}
+                canCancel={true}
+                showTimeEstimate={true}
+              />
+            </View>
+          ) : (
+            <ScrollView style={styles.formContainer} showsVerticalScrollIndicator={false}>
+              {/* Helper Text */}
+              <Text style={styles.helperText}>
+                Tell us about your dream trip and we'll create a personalized itinerary for you!
+              </Text>
 
             {/* Destination Field */}
             <View style={styles.inputContainer}>
@@ -298,8 +312,10 @@ const AITripPlanningModal = ({
               </Text>
             </View>
           </ScrollView>
+          )}
 
-          {/* Footer Buttons */}
+          {/* Footer Buttons - Hidden during loading */}
+          {!loading && (
           <View style={styles.modalFooter}>
             <CustomButton
               title="Cancel"
@@ -317,6 +333,7 @@ const AITripPlanningModal = ({
               testID="generate-plan-button"
             />
           </View>
+          )}
         </View>
       </View>
 
@@ -398,6 +415,13 @@ const styles = StyleSheet.create({
   formContainer: {
     paddingHorizontal: 20,
     paddingVertical: 16,
+  },
+  loadingContainer: {
+    paddingVertical: 40,
+    paddingHorizontal: 20,
+    minHeight: 300,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   helperText: {
     fontSize: 14,
