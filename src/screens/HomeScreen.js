@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, FlatList, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import ScreenLayout from '../components/layout/ScreenLayout';
 import ScreenHeader from '../components/layout/ScreenHeader';
 import CustomButton from '../components/CustomButton';
 import LoadingIndicator from '../components/ui/LoadingIndicator';
+
 import { getUserTrips } from '../services/trips';
 import { useAuth } from '../context/AuthContext';
 import { colors } from '../theme/colors';
@@ -100,6 +102,15 @@ const HomeScreen = ({ navigation }) => {
       loadUserTrips();
     }
   }, [user]);
+
+  // Refresh trips when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      if (user) {
+        loadUserTrips();
+      }
+    }, [user])
+  );
 
   return (
     <ScreenLayout>
