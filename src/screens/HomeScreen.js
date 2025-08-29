@@ -5,6 +5,7 @@ import ScreenLayout from '../components/layout/ScreenLayout';
 import ScreenHeader from '../components/layout/ScreenHeader';
 import CustomButton from '../components/CustomButton';
 import LoadingIndicator from '../components/ui/LoadingIndicator';
+import AITestComponent from '../components/AITestComponent'; // Temporary for testing
 import { getUserTrips } from '../services/trips';
 import { useAuth } from '../context/AuthContext';
 import { colors } from '../theme/colors';
@@ -221,6 +222,9 @@ const HomeScreen = ({ navigation }) => {
             style={styles.actionButton}
           />
         </View>
+
+        {/* Temporary AI Test Component - Remove in later phases */}
+        <AITestComponent />
       </ScrollView>
     </ScreenLayout>
   );

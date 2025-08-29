@@ -88,8 +88,53 @@ export const extractErrorCode = (error) => {
   return 'unknown-error';
 };
 
+// OpenAI specific error messages
+export const getOpenAIErrorMessage = (errorCode, context = 'general') => {
+  switch (errorCode) {
+    case 'invalid_api_key':
+    case 'authentication_failed':
+      return "Invalid API key. Please check your OpenAI API key configuration.";
+    
+    case 'rate_limit_exceeded':
+      return "Rate limit exceeded. Please wait a moment and try again.";
+    
+    case 'insufficient_quota':
+    case 'quota_exceeded':
+      return "OpenAI quota exceeded. Please check your OpenAI account billing.";
+    
+    case 'model_not_found':
+      return "The requested AI model is not available. Please contact support.";
+    
+    case 'timeout':
+      return "Request timed out. Please try again.";
+    
+    case 'network_error':
+      return "Network error. Please check your internet connection and try again.";
+    
+    case 'server_error':
+      return "OpenAI service is temporarily unavailable. Please try again later.";
+    
+    case 'configuration-invalid':
+      return "AI features are not properly configured. Please contact support.";
+    
+    case 'client-initialization-failed':
+      return "Failed to initialize AI service. Please try again.";
+    
+    default:
+      console.warn('Unhandled OpenAI error code:', errorCode);
+      return "An unexpected error occurred with the AI service. Please try again or contact support.";
+  }
+};
+
 // Helper function to get user-friendly error message from any Firebase error
 export const getUserFriendlyError = (error, context = 'general') => {
   const errorCode = extractErrorCode(error);
+  
+  // Handle OpenAI errors
+  if (context.startsWith('ai-') || context.startsWith('openai-')) {
+    return getOpenAIErrorMessage(errorCode, context);
+  }
+  
+  // Handle Firebase auth errors (existing functionality)
   return getAuthErrorMessage(errorCode, context);
 };
