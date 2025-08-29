@@ -5,7 +5,7 @@ import { useEditMode } from '../../context/EditModeContext';
 import InlineEditableTextArea from '../ui/InlineEditableTextArea';
 
 const TripDescription = ({ trip, onUpdate }) => {
-  const { isEditMode, markUnsavedChanges } = useEditMode();
+  const { isEditMode } = useEditMode();
   const [isExpanded, setIsExpanded] = useState(false);
   
   // Individual editing state for description
@@ -29,7 +29,6 @@ const TripDescription = ({ trip, onUpdate }) => {
   const handleDescriptionSave = async (newDescription) => {
     try {
       await onUpdate({ description: newDescription });
-      markUnsavedChanges();
       setIsEditingDescription(false);
     } catch (error) {
       throw error;

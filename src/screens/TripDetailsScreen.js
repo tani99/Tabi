@@ -14,6 +14,7 @@ import ScreenHeader from '../components/layout/ScreenHeader';
 import LoadingIndicator from '../components/ui/LoadingIndicator';
 import TripDetailsHeader from '../components/trip-details/TripDetailsHeader';
 import TripDateDisplay from '../components/trip-details/TripDateDisplay';
+import TripDescription from '../components/trip-details/TripDescription';
 import TripStatistics from '../components/trip-details/TripStatistics';
 import { useTripDetails } from '../context/TripDetailsContext';
 import { useAuth } from '../context/AuthContext';
@@ -277,6 +278,12 @@ const TripDetailsScreen = ({ navigation, route }) => {
 
         {/* Trip Date Display with inline editing */}
         <TripDateDisplay
+          trip={trip}
+          onUpdate={handleTripUpdate}
+        />
+
+        {/* Trip Description with inline editing */}
+        <TripDescription
           trip={trip}
           onUpdate={handleTripUpdate}
         />
